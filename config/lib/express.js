@@ -404,7 +404,7 @@ module.exports.init = function (db, redis) {
     this.initViewEngine(app);
 
     // Initialize Express session
-    this.initSession(app, db);
+    // this.initSession(app, db);
 
     // Initialize Modules configuration
     this.initModulesConfiguration(app);

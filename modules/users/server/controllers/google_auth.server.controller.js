@@ -14,51 +14,51 @@ exports.init = function (app) {
     //   Strategies in Passport require a `verify` function, which accept
     //   credentials (in this case, an accessToken, refreshToken, and Google
     //   profile), and invoke a callback with a user object.
-    passport.use(new GoogleStrategy({
-            clientID: '',
-            clientSecret: '',
-            callbackURL: '/api/auth/google/callback',
-            passReqToCallback: true,
-            proxy: true
-        },
-        function (req, res, accessToken, refreshToken, profile, done) {
-            let email = profile.emails[0].value;
+    // passport.use(new GoogleStrategy({
+    //         clientID: '',
+    //         clientSecret: '',
+    //         callbackURL: '/api/auth/google/callback',
+    //         passReqToCallback: true,
+    //         proxy: true
+    //     },
+    //     function (req, res, accessToken, refreshToken, profile, done) {
+    //         let email = profile.emails[0].value;
+    //
+    //         db.groups.findOne({
+    //             attributes: ['id'], where: {code: 'admin'}
+    //         }).then(function(admin_group){
+    //             db.users.findOne({
+    //                 where:{email: email},
+    //                 include: [{model:db.groups, required: true}]
+    //             }).then(function(user){
+    //                 if (!user) {
+    //                     req.body.email = email;
+    //                     done(null, email);
+    //                 }
+    //                 else {
+    //                     req.body.token = authentication.issueJWT(user.id, user.username, user.group.code, user.company_id)
+    //                     done(null, user.username);
+    //                 }
+    //             });
+    //             return null;
+    //         }).catch(function(error){
+    //             done(true);
+    //         });
+    //     }
+    // ));
 
-            db.groups.findOne({
-                attributes: ['id'], where: {code: 'admin'}
-            }).then(function(admin_group){
-                db.users.findOne({
-                    where:{email: email},
-                    include: [{model:db.groups, required: true}]
-                }).then(function(user){
-                    if (!user) {
-                        req.body.email = email;
-                        done(null, email);
-                    }
-                    else {
-                        req.body.token = authentication.issueJWT(user.id, user.username, user.group.code, user.company_id)
-                        done(null, user.username);
-                    }
-                });
-                return null;
-            }).catch(function(error){
-                done(true);
-            });
-        }
-    ));
+    // app.get('/api/auth/google', passport.authenticate('google', { scope:['https://www.googleapis.com/auth/plus.login', 'https://www.googleapis.com/auth/plus.profile.emails.read']}));
 
-    app.get('/api/auth/google', passport.authenticate('google', { scope:['https://www.googleapis.com/auth/plus.login', 'https://www.googleapis.com/auth/plus.profile.emails.read']}));
-
-    app.get('/api/auth/google/callback', passport.authenticate('google', { failureRedirect: '/admin', session: false}),
-        function(req, res) {
-            if(req.body.token){
-                let url = '/admin/#/auth?access_token=' + req.body.token;
-                res.redirect(url);
-            }
-            else{
-                res.redirect('/create_company/'+req.body.email);
-            }
-        })
+    // app.get('/api/auth/google/callback', passport.authenticate('google', { failureRedirect: '/admin', session: false}),
+    //     function(req, res) {
+    //         if(req.body.token){
+    //             let url = '/admin/#/auth?access_token=' + req.body.token;
+    //             res.redirect(url);
+    //         }
+    //         else{
+    //             res.redirect('/create_company/'+req.body.email);
+    //         }
+    //     })
 }
 
 exports.create_company_form = function (req, res) {
