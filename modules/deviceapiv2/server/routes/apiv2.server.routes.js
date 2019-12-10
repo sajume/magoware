@@ -78,10 +78,12 @@ module.exports = function(app) {
         .post(deviceepgController.epg);
 
     app.route('/apiv2/channels/event')
-        .all(authpolicy.isAllowed)
-        .get(deviceepgController.get_event)
+        .post(authpolicy.isAllowed)
         .post(deviceepgController.event);
 
+    app.route('/apiv2/channels/event')
+        .get(deviceepgController.get_event)
+        
     app.route('/apiv2/channels/event/:channelId')
       .all(authpolicy.isAllowed)
       .get(deviceepgController.event_get);
@@ -260,21 +262,21 @@ module.exports = function(app) {
 
     /* ===== login data reset password ===== */
     app.route('/apiv2/password/forgot')
-        .post(passwordController.forgot);
+      .post(passwordController.forgotV2);
 
     app.route('/apiv2/password/reset/:token')
-        .get(passwordController.validateResetToken);
-
+      .get(passwordController.renderPasswordForm)
+      .post(passwordController.resetForgottenPassword);
 
 
     //****************************************************************
     app.route('/apiv2/channels/testepgdata')
-        .get(deviceepgController.test_get_epg_data)
+        .get(deviceepgController.test_get_epg_data);
 
     app.route('/apiv2/channels/epgdata')
         .all(authpolicy.isAllowed)
         .all(cache.middleware('3 minutes'))
-        .get(deviceepgController.get_epg_data)
+        .get(deviceepgController.get_epg_data);
 
     /* ===== weather widget ===== */
 
@@ -299,5 +301,9 @@ module.exports = function(app) {
 
     app.route('/apiv2/remotedevicelogin')
         .post(mainController.qr_login);
+
+    app.route('/apiv2/multicompany/:username')
+      .all(authpolicy.plainAuth)
+      .get(credentialsController.listMultiCompanies);
 
 };

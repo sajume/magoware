@@ -46,14 +46,14 @@ var path = require('path'),
  * Create
  */
 exports.create = function(req, res) {
-    var no_users = (req.body.type === "one" && req.body.username === null) ? true : false; //no users selected for single user messages, don't send push
+    const no_users = (req.body.type === "one" && req.body.username === null); //no users selected for single user messages, don't send push
     if(no_users){
         return res.status(400).send({
             message: 'You did not select any devices'
         });
     }
     else{
-        var where = {}; //the device filters will be passed here
+        let where = {}; //the device filters will be passed here
 
         if(req.body.type === "one") {
             if(req.body.macadress) where.device_mac_address = req.body.macadress;
@@ -63,13 +63,14 @@ exports.create = function(req, res) {
 
         if (req.body.appid && req.body.appid.length > 0) {
             var device_types = [];
-            for(var j=0; j<req.body.appid.length; j++) device_types.push(parseInt(req.body.appid[j]));
+            for(let j=0; j<req.body.appid.length; j++) device_types.push(parseInt(req.body.appid[j]));
         }
         else return res.status(400).send({ message: "You did not select any device types" });
 
         if(req.body.sendtoactivedevices) where.device_active = true; //if we only want to send push msgs to active devices, add condition
-        where.appid = {in: device_types}; //filter devices by application id
+        where.appid = {$in: device_types}; //filter devices by application id
         where.company_id = req.token.company_id;
+
 
         DBDevices.findAll(
             {
@@ -83,37 +84,31 @@ exports.create = function(req, res) {
                     message: 'No devices found with these filters'
                 });
             } else {
-                if(req.body.command === 'login_user'){
-                    var fcm_tokens = [];
-                    var users = [];
-                    var parameters = {
+                if(req.body.command === 'login_user') {
+                    let parameters = {
                             "username": result[0].login_datum.username,
                             "password": req.body.password
                     };
-                    var message = new push_msg.ACTION_PUSH("Action", "Running action", '5', req.body.command, parameters);
-                    for(var i=0; i<result.length; i++)
+                    let message = new push_msg.ACTION_PUSH("Action", "Running action", '5', req.body.command, parameters);
+                    for(let i=0; i<result.length; i++)
                         push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, 5000, false, false, function(result){});
                 }
                 else if(req.body.command === 'show_username'){
-                    var fcm_tokens = [];
-                    var users = [];
-                    var parameters = {
+                    let parameters = {
                             "username": result[0].login_datum.username,
                             "top": req.body.top,
                             "left": req.body.left
                     };
-                    var message = new push_msg.INFO_PUSH("Action", "Performing an action", '6', parameters);
-                    for(var i=0; i<result.length; i++)
+                    let message = new push_msg.INFO_PUSH("Action", "Performing an action", '6', parameters);
+                    for(let i=0; i<result.length; i++)
                         push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, 5000, true, false, function(result){});
                 }
                 else{
-                    var fcm_tokens = [];
-                    var users = [];
-                    var min_ios_version = (company_configurations.ios_min_version) ? parseInt(company_configurations.ios_min_version) : parseInt('1.3957040');
-                    var android_phone_min_version = (company_configurations.android_phone_min_version) ? parseInt(company_configurations.android_phone_min_version) : '1.1.2.2';
-                    var min_stb_version = (company_configurations.stb_min_version) ? parseInt(company_configurations.stb_min_version) : '2.2.2';
-                    var android_tv_min_version = (company_configurations.android_tv_min_version) ? parseInt(company_configurations.android_tv_min_version) : '6.1.3.0';
-                    for(var i=0; i<result.length; i++){
+                    const min_ios_version = (company_configurations.ios_min_version) ? parseInt(company_configurations.ios_min_version) : parseInt('1.3957040');
+                    const android_phone_min_version = (company_configurations.android_phone_min_version) ? parseInt(company_configurations.android_phone_min_version) : '1.1.2.2';
+                    const min_stb_version = (company_configurations.stb_min_version) ? parseInt(company_configurations.stb_min_version) : '2.2.2';
+                    const android_tv_min_version = (company_configurations.android_tv_min_version) ? parseInt(company_configurations.android_tv_min_version) : '6.1.3.0';
+                    for(let i=0; i<result.length; i++){
                         if(result[i].appid === 1 && result[i].app_version >= min_stb_version)
                             var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
                         else if(result[i].appid === 2 && result[i].app_version >= android_phone_min_version)

@@ -1,15 +1,17 @@
 'use strict';
 
-var path = require('path'),
+const path = require('path'),
     CryptoJS = require("crypto-js"),
-  config = require(path.resolve('./config/config')),
-  reCaptcha = require(path.resolve('./config/lib/reCaptcha')),
-  async = require('async'),
-  nodemailer = require('nodemailer'),
-  request = require('request'),
+    config = require(path.resolve('./config/config')),
+    reCaptcha = require(path.resolve('./config/lib/reCaptcha')),
+    async = require('async'),
+    nodemailer = require('nodemailer'),
+    querystring = require('querystring'),
+    auth = require(path.resolve('./modules/deviceapiv2/server/auth/apiv2.server.auth')),
+    request = require('request'),
     jwt = require('jsonwebtoken'),
-    jwtSecret = "thisIsMySecretPasscode",
-    jwtIssuer = "MAGOWARE";
+    jwtSecret = process.env.JWT_SECRET,
+    jwtIssuer = process.env.JWT_ISSUER;
 
 function auth_encrypt(plainText, key) {
   var C = CryptoJS;
@@ -162,13 +164,24 @@ exports.generateauth = function(req, res) {
 
 };
 
+exports.testAuthToken = function(req, res) {
+  let authEncoded = decodeURIComponent(req.headers.auth);
+  let authParams = querystring.parse(authEncoded, ",", "=");
+  auth.decryptAuth(authParams[' auth'], req.app.locals.backendsettings[1].new_encryption_key)
+    .then(function(authDecoded) {
+      res.send(authDecoded);
+    }).catch(err => {
+      console.log(err);
+    })
+}
+
 
 //decode jwt sent under Authorization header
 exports.testjwtoken = function(req, res) {
 
     let aHeader = req.get("Authorization");
     try {
-        var decoded = jwt.verify(aHeader, jwtSecret);
+        var decoded = jwt.verify(aHeader, process.env.JWT_SECRET);
 
         res.send(decoded);
 

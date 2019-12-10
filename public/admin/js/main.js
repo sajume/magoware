@@ -690,6 +690,7 @@ myApp.config(['NgAdminConfigurationProvider', function (nga) {
     admin.addEntity(nga.entity('PlayerSettings'));
     admin.addEntity(nga.entity('Subscriptions'));
     admin.addEntity(nga.entity('Users'));
+    admin.addEntity(nga.entity('userAvailable'));
     admin.addEntity(nga.entity('Groups'));
     admin.addEntity(nga.entity('Grouprights'));
     admin.addEntity(nga.entity('Vods'));
@@ -796,6 +797,7 @@ myApp.config(['NgAdminConfigurationProvider', function (nga) {
     require('./settings/config')(nga, admin);
     require('./subscription/config')(nga, admin);
     require('./user/config')(nga, admin);
+    require('./userAvailable/config')(nga, admin);
     require('./groups/config')(nga, admin);
     require('./grouprights/config')(nga, admin);
     require('./app_management/config')(nga, admin);

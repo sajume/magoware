@@ -22,8 +22,16 @@ module.exports = function(sequelize, DataTypes) {
             type: DataTypes.BOOLEAN,
             allowNull: false
         },
+        pin_protected: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false
+        },
         icon_url: {
             type: DataTypes.STRING(255),
+            allowNull: false
+        },
+        order: {
+            type: DataTypes.INTEGER(11),
             allowNull: false
         }
     }, {

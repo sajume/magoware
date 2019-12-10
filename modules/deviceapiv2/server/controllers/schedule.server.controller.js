@@ -114,7 +114,9 @@ function end_subscription(login_id, ending_after, app_ids, screensize, activity,
             livetv_l_subscription_end[login_id] = setTimeout(function(){
                 send_action('termination', login_id, app_ids, firebase_key)
             }, ending_after);
-        } catch(e){}
+        } catch(e) {
+            winston.error("There is a error at terminating user because his subscription ended, live tv, screensize 1, error: ", e)
+        }
     }
     else if(activity === 'livetv' && screensize === 2){
         try{
@@ -123,21 +125,28 @@ function end_subscription(login_id, ending_after, app_ids, screensize, activity,
                 //livetv_s_subscription_end[login_id] = setTimeout(function(){
                 send_action('termination', login_id, app_ids, firebase_key)
             }, ending_after);
-        } catch(e){}
+        } catch(e){
+            winston.error("There is a error at terminating user because his subscription ended, live tv, screensize 2, error: ", e)
+
+        }
     }
     else if(activity === 'vod' && screensize === 1){
         try{
             vod_l_subscription_end[login_id] = setTimeout(function(){
                 send_action('termination', login_id, app_ids, firebase_key)
             }, ending_after);
-        } catch(e){}
+        } catch(e) {
+            winston.error("There is a error at terminating user because his subscription ended, vod, screensize 1, error: ", e)
+        }
     }
     else{
-        try{
+        try {
             vod_s_subscription_end[login_id] = setTimeout(function(){
                 send_action('termination', login_id, app_ids, firebase_key)
             }, ending_after);
-        } catch(e){}
+        } catch(e) {
+            winston.error("There is a error at terminating user because his subscription ended, vod, screensize 1, error: ", e)
+        }
     }
 }
 

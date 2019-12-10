@@ -4,9 +4,9 @@ var path = require('path'),
     response = require(path.resolve("./config/responses.js"));
 var winston = require("winston");
 
-const keyStr = "";
+const keyStr = "31313131313131313131313131313131";
 
-const secure_key = ""; //server side only
+const secure_key = "njekey2keyIIIkey"; //server side only
 const token_valid_time = 96000; //time window for valid tokens
 
 function generate_sha1( data ) {

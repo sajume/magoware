@@ -139,29 +139,30 @@ exports.list = function(req, res) {
 
   final_where.include = [{model:db.models.channels,  required: true}];
 
-  DBModel.findAndCountAll({
-      attributes:['id','description', 'icon_url', 'is_available'],
-      where: {company_id: req.token.company_id},
-      include:[{
-          model:db.models.channels, required:false,
-          attributes:[[db.sequelize.fn('count',db.sequelize.col('channels.id')),'total']],
-          nested: true
-      }],
-      group:['genre.id','genre.description']
-  }).then(function(results) {
-      if (!results) {
-          res.status(404).send({
-              message: 'No data found'
-          });
-          return null;
-      } else {
-          res.setHeader("X-Total-Count", results.count);
-          return res.json(results.rows);
-      }
-  }).catch(function(err) {
-      winston.error("Getting genre list failed with error: ", err);
-      return res.jsonp(err);
-  });
+    DBModel.findAndCountAll({
+        attributes: ['id', 'description', 'icon_url', 'is_available', 'order', 'pin_protected'],
+        where: {company_id: req.token.company_id},
+        include: [{
+            model: db.models.channels, required: false,
+            attributes: [[db.sequelize.fn('count', db.sequelize.col('channels.id')), 'total']],
+            nested: true
+        }],
+        order: [['order', 'ASC']],
+        group: ['genre.id', 'genre.description']
+    }).then(function (results) {
+        if (!results) {
+            res.status(404).send({
+                message: 'No data found'
+            });
+            return null;
+        } else {
+            res.setHeader("X-Total-Count", results.count);
+            return res.json(results.rows);
+        }
+    }).catch(function (err) {
+        winston.error("Getting genre list failed with error: ", err);
+        return res.jsonp(err);
+    });
 };
 
 /**

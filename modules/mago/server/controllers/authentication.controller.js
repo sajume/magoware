@@ -1,26 +1,23 @@
 'use strict';
 
-var jwt = require('jsonwebtoken'),
-    jwtSecret = "thisIsMySecretPasscode",
-    jwtIssuer = "MAGOWARE";
+const jwt = require('jsonwebtoken'),
+    jwtSecret = process.env.JWT_SECRET,
+    jwtIssuer = process.env.JWT_ISSUER;
 
 /**
  * Module dependencies.
  */
-var path = require('path'),
+const path = require('path'),
     errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
     db = require(path.resolve('./config/lib/sequelize')).models,
     winston = require('winston'),
-    sequelize = require('sequelize'),
     async = require('async'),
     crypto = require('crypto'),
     nodemailer = require('nodemailer'),
     config = require(path.resolve('./config/config')),
-    dbAdmin = require(path.resolve('./config/lib/sequelize')),
     DBModel = db.users,
     sendEmail = require(path.resolve('./custom_functions/sendEmail'));
 
-var async = require('async');
 
 
 /**
@@ -40,7 +37,7 @@ var async = require('async');
 
 exports.authenticate = function (req, res) {
 
-    var authBody = req.body;
+    const authBody = req.body;
     DBModel.findOne(
         {
             where: {
@@ -81,11 +78,11 @@ exports.authenticate = function (req, res) {
                         username: result.username,
                         uid: result.id,
                         role: group
-                    }, jwtSecret, {
+                    }, process.env.JWT_SECRET, {
                         expiresIn: "4h"
                     });
 
-                req.token = jwt.verify(token, jwtSecret);
+                req.token = jwt.verify(token, process.env.JWT_SECRET);
 
                 if (req.token.role !== 'superadmin') {
                     db.users.findAll({
@@ -175,7 +172,7 @@ exports.logingmail = function (req, res) {
         token = aHeader;
 
     try {
-        let decoded = jwt.verify(token, jwtSecret);
+        let decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.token = decoded;
     } catch (err) {
         return res.status(403).json({
@@ -239,7 +236,7 @@ exports.issueJWT = function (userid, username, group, company_id) {
             username: username,
             uid: userid,
             role: group
-        }, jwtSecret, {
+        }, process.env.JWT_SECRET, {
             expiresIn: "4h"
         });
 

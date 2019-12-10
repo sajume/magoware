@@ -3,8 +3,8 @@
 var paymenttokens = {
 
     "STRIPE":  {
-        "API_KEY":        "STRIPE_API_KEY_HERE",
-        "ENDPOIN_REFUND": "STRIPE_API_KEY_HERE"
+        "API_KEY":        "'YOUR KEY HERE'",
+        "ENDPOIN_REFUND": "'YOUR KEY HERE'"
     }
 }
 

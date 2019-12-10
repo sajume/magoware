@@ -55,6 +55,10 @@ module.exports = function(sequelize, DataTypes) {
         isavailable: {
             type: DataTypes.BOOLEAN,
             allowNull: false
+        },
+        availability_denominator: {
+            type: DataTypes.INTEGER(11),
+            defaultValue: 1
         }
     }, {
         tableName: 'app_management',

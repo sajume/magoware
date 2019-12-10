@@ -81,6 +81,7 @@
   "/api/subscriptions",
   "/api/subscriptions/:subscriptionId",
   "/api/users",
+  "/api/userAvailable",
   "/api/users/:usersId",
   "/api/change-password",
   "/api/user/change-password",

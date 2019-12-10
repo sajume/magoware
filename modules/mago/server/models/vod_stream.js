@@ -59,7 +59,6 @@ module.exports = function(sequelize, DataTypes) {
             type: DataTypes.STRING(20),
             allowNull: false,
             defaultValue: 'regular',
-            unique: 'vodstream_type'
         }
     }, {
         tableName: 'vod_stream',

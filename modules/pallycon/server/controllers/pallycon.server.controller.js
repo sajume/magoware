@@ -36,9 +36,9 @@ exports.TokenIssue = function(req, res) {
 
     const AES_IV = "0123456789abcdef";
     const siteInfo = {
-        siteId: "ID",
-        siteKey: "PALYCON_SITE_KEY_HERE",
-        accessKey: "PALYCON_ACCESS_KEY_HERE"
+        siteId: "KMDK",
+        siteKey: "",
+        accessKey: ""
     };
 
     let licenseInfo = {

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const rimraf = require('rimraf');
-const winston = require('winston');
+const winston = require('../config/lib/winston');
 
 const types = ['xml', 'csv'];
 
@@ -17,6 +17,8 @@ function addDays(date, days) {
 
 setInterval(() => {
     fs.readdir(folder, function (err, files) {
+        if(!files || err) return;
+
         files.forEach(function (file) {
             types.map(type => {
                 const ext = file.substr(file.lastIndexOf('.') + 1);

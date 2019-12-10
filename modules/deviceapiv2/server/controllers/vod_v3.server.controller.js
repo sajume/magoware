@@ -26,6 +26,18 @@ var moment = require('moment');
  */
 exports.get_movie_details = function(req, res) {
 
+    models.vod_resume.create(
+        {
+            login_id: req.thisuser.id,
+            vod_id: req.params.vod_id,
+            company_id: req.thisuser.company_id,
+            resume_position: 0,
+            reaction: req.params.reaction,
+            device_id: req.auth_obj.boxid,
+            seen_details: true
+        });
+
+
     var transactional_vod_duration = req.app.locals.backendsettings[req.thisuser.company_id].t_vod_duration;
     var attributes = [
         'id', ['adult_content', 'adult'], 'homepage', 'budget', 'mandatory_ads', 'imdb_id', 'original_language', 'original_title', 'expiration_time', 'price',
@@ -344,7 +356,8 @@ exports.reaction = function(req,res) {
             company_id: req.thisuser.company_id,
             resume_position: 0,
             reaction: req.params.reaction,
-            device_id: req.auth_obj.boxid
+            device_id: req.auth_obj.boxid,
+            seen_details: true
         }
     ).then(function (result) {
         response.send_res_get(req, res, [], 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'no-store');

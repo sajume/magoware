@@ -3,7 +3,8 @@
   "version": "0.0.2",
   "main": "js/main.js",
   "repository": {
-    "type": "git"
+    "type": "git",
+    "url": "git://bitbucket.org/magoware/magoware-backoffice.git"
   },
   "dependencies": {
     "vis": "^4.20.1"

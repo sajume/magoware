@@ -102,28 +102,28 @@ exports.delete = function(req, res) {
 /**
  * List
  */
-exports.list = function(req, res) {
+exports.list = function (req, res) {
 
-    var qwhere = {},
-        final_where = {},
-        query = req.query;
+    let qwhere = {},
+      final_where = {},
+      query = req.query;
 
     //start building where
     final_where.where = qwhere;
-    if(parseInt(query._start)) final_where.offset = parseInt(query._start);
-    if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
+    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir
+    else final_where.order = [['order', 'ASC']];
+
     final_where.include = [];
     //end build final where
 
-    if(query.vod_menu_id) qwhere.vod_menu_id = query.vod_menu_id;
+    if (query.vod_menu_id) qwhere.vod_menu_id = query.vod_menu_id;
     final_where.where.company_id = req.token.company_id; //return only records for this company
 
     DBModel.findAndCountAll(
-
-        final_where
-
-    ).then(function(results) {
+      final_where
+    ).then(function (results) {
         if (!results) {
             return res.status(404).send({
                 message: 'No data found'
@@ -133,8 +133,8 @@ exports.list = function(req, res) {
             res.setHeader("X-Total-Count", results.count);
             res.json(results.rows);
         }
-    }).catch(function(err) {
-        winston.error("Error listing vod menu carousel, error: ",err);
+    }).catch(function (err) {
+        winston.error("Error listing vod menu carousel, error: ", err);
         res.jsonp(err);
     });
 };
@@ -144,7 +144,7 @@ exports.list = function(req, res) {
  */
 exports.dataByID = function(req, res, next, id) {
 
-    if ((id % 1 === 0) === false) { //check if it's integer
+    if (!(id % 1 === 0)) { //check if it's integer
         return res.status(404).send({
             message: 'Data is invalid'
         });

@@ -321,7 +321,7 @@ exports.update_film = function(req, res) {
 
 function omdbapi(tv_episode_data, callback){
 
-    var api_key = ""; //todo: dynamic value
+    var api_key = "a421091c"; //todo: dynamic value
     var search_params = "";
     if(tv_episode_data.imdb_id) search_params = search_params+'&'+'i='+tv_episode_data.imdb_id;
     else{

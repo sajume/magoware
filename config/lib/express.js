@@ -3,7 +3,7 @@
 /**
  * Module dependencies.
  */
-var config = require('../config'),
+const config = require('../config'),
     express = require('express'),
     bodyParser = require('body-parser'),
     session = require('express-session'),
@@ -22,7 +22,8 @@ var config = require('../config'),
     rateLimit = require('express-rate-limit'),
     securityConfig = require('../security/exprees.security.config'),
     policy = require(path.resolve('./modules/mago/server/policies/mago.server.policy')),
-    morgan = require('morgan');
+    morgan = require('morgan'),
+    uuid = require('uuid');
 
 //documentation
 //docs = require("express-mongoose-docs");
@@ -56,6 +57,11 @@ module.exports.initLocalVariables = function (app) {
     app.locals.usersProfileDir = config.app.usersProfileDir;
     app.locals.reCaptchaSecret = config.app.reCaptchaSecret;
     app.locals.livereload = config.livereload;
+
+
+    process.env.JWT_SECRET =
+      "YOUR_SECRET_KEY";
+    process.env.JWT_ISSUER = "Magoware";
 };
 
 /**
@@ -100,7 +106,14 @@ module.exports.initMiddleware = function (app) {
                     next();
                 }
                 else{
-                    res.status(429).send({message: "Too many requests, please try again later"})
+                    res.status(429).send({
+                        status_code: 429,
+                        error_code: 1,
+                        timestamp: new Date().toISOString(),
+                        error_description: "Too many requests, please try again later",
+                        extra_data: "Too many requests, please try again later",
+                        response_object: []
+                    });
                 }
             }
         });
@@ -147,37 +160,14 @@ module.exports.initMiddleware = function (app) {
 
     //Custom error handling when error occurs in middleware
     app.use(function (err, req, res, next) {
-        winston.error(err);
+        winston.error("A global uncatched error has been encountered", err);
 
-        if (err.name == 'PayloadTooLargeError') {
+        if (err.name === 'PayloadTooLargeError') {
             res.status(413).send({ message: 'Payload too large' });
         } else {
-            res.send(500).send({ message: 'Internal server error' })
+            res.status(500).send({ message: 'Internal server error' })
         }
     })
-    // Add multipart handling middleware
-    /*
-    var storage = multer.diskStorage({
-        destination: function(req, file, cb) {
-            cb(null, './uploads');
-        },
-        filename: function(req, file, cb) {
-            var getFileExt = function(fileName) {
-                var fileExt = fileName.split(".");
-                if (fileExt.length === 1 || (fileExt[0] === "" && fileExt.length === 2)) {
-                    return "";
-                }
-                return fileExt.pop();
-            };
-            cb(null, Date.now() + '.' + getFileExt(file.originalname));
-        }
-    });
-
-    app.use(multer({
-        storage: storage
-    }).single('file'));
-    */
-
 };
 
 /**
@@ -377,7 +367,7 @@ module.exports.readCompanyConfigurations = function (app) {
     winston.info('Initializing company configurations ...');
     // Globbing routing files
     try {
-        company_configurations = require(path.resolve('./config/company_configurations/' + fs.readdirSync('./config/company_configurations')[0]));
+        const company_configurations = require(path.resolve('./config/company_configurations/' + fs.readdirSync('./config/company_configurations')[0]));
     }
     catch (error) {
         winston.error("Error reading company configurations, error: ", error);
@@ -404,7 +394,7 @@ module.exports.init = function (db, redis) {
     this.initViewEngine(app);
 
     // Initialize Express session
-    // this.initSession(app, db);
+    this.initSession(app, db);
 
     // Initialize Modules configuration
     this.initModulesConfiguration(app);

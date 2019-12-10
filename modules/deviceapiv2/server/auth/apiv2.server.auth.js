@@ -1,14 +1,17 @@
 'use strict';
 
 var CryptoJS = require("crypto-js"),
-    crypto = require("crypto"),
-    querystring = require("querystring"),
-    path = require('path'),
-    db = require(path.resolve('./config/lib/sequelize')),
-    models = db.models,
-    authenticationHandler = require(path.resolve('./modules/deviceapiv2/server/controllers/authentication.server.controller.js')),
-    response = require(path.resolve("./config/responses.js"));
-var winston = require("winston");
+  crypto = require("crypto"),
+  cryptoAsync = require('@ronomon/crypto-async'),
+  querystring = require("querystring"),
+  path = require('path'),
+  db = require(path.resolve('./config/lib/sequelize')),
+  models = db.models,
+  authenticationHandler = require(path.resolve('./modules/deviceapiv2/server/controllers/authentication.server.controller.js')),
+  response = require(path.resolve("./config/responses.js")),
+  winston = require("winston");
+
+const appIDs = ['2', '3'];
 
 function auth_encrytp(plainText, key) {
     var C = CryptoJS;
@@ -104,10 +107,8 @@ exports.emptyCredentials = function(req, res, next) {
  *  username=chernoalpha;password=klmn;boxid=63a7240ers2a745f;appid=2;timestamp=1529422891012
  *
  */
-
-exports.isAllowed = function(req, res, next) {
+function isAllowed(req, res, next) {
     let COMPANY_ID = req.get('company_id') || 1;
-
     if(req.body.isFromCompanyList) {
         COMPANY_ID = req.body.company_id;
     }
@@ -168,9 +169,18 @@ exports.isAllowed = function(req, res, next) {
         }
     }
 
-
-
     if(auth_obj){
+        //Add timezone to auth object
+        var timezone = querystring.parse(auth,",","=")[' device_timezone']; //android apps add an extra space in the parameter name
+        if(!timezone) {
+            timezone = querystring.parse(auth,",","=")['device_timezone']
+            if (!timezone) {
+                timezone = '0'
+            }
+        }
+        timezone = timezone.replace(/ /g, '')
+        auth_obj.device_timezone = timezone;
+
         if((req.body.hdmi === 'true') && (['2', '3'].indexOf(auth_obj.appid) !== -1)){
             response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
         }
@@ -178,7 +188,7 @@ exports.isAllowed = function(req, res, next) {
             response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TIMESTAMP', 'no-store');
         }
         else if(valid_appid(auth_obj) === true){
-             set_screensize(auth_obj);
+            set_screensize(auth_obj);
 
             if(req.empty_cred){
                 req.auth_obj = auth_obj;
@@ -238,6 +248,241 @@ exports.isAllowed = function(req, res, next) {
 
     }
 };
+
+function isAllowedAsync(req, res, next) {
+    let companyId = req.headers.company_id || 1;
+
+    if(req.body.isFromCompanyList) {
+        companyId = req.body.company_id;
+    }
+
+    if (!req.app.locals.backendsettings[companyId]) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+        return;
+    }
+
+    //Retrieve encoded auth from body, auth header or params
+    let authEncoded = null;
+    let authToken = null;
+    let authParams = null;
+    if(req.headers.auth) {
+        authEncoded = decodeURIComponent(req.headers.auth);
+        authEncoded = authEncoded.replace(/[{}]/g, '');
+
+        //Parse auth parameters to object
+        authParams = querystring.parse(authEncoded,",","=");
+        if (authParams[' auth']) {
+            authToken = authParams[' auth'];
+        }
+        else if (authParams['auth']) {
+            authToken = authParams['auth']
+        }
+        else {
+            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+            return;
+        }
+    }
+    else if(req.body.auth) {
+        authEncoded = decodeURIComponent(req.body.auth);
+
+        //Check plaintext auth
+        if(isplaintext(authEncoded, req.plaintext_allowed)){
+            if(req.plaintext_allowed){
+                //call verifyAuth
+                let authObj = parse_plain_auth(authEncoded);
+                if (!authObj) {
+                    response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
+                    return ;
+                }
+
+                authObj.companyId = companyId;
+                verifyAuth(req, res, next, authObj, authObj);
+            }
+            else{
+                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
+            }
+
+            return;
+        }
+
+        //Params are in body
+        authParams = req.body;
+        authToken = authEncoded;
+    }
+    else {
+        //Auth was not sent neither in plain text nor encrypted
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+        return;
+    }
+
+    authParams.companyId = companyId;
+
+    if (!req.body.language) {
+        if (authParams[' language']) {
+            //Android adds an space to in the parameter names
+            req.body.language = authParams[' language'];
+        }
+        else if (authParams['language']) {
+            req.body.language = authParams['language'];
+        }
+        else {
+            req.body.language = 'eng'
+        }
+    }
+
+    //Decrypt auth async
+    return decryptAuth(authToken, req.app.locals.backendsettings[companyId].new_encryption_key)
+      .then(function(auth) {
+          let authObj = querystring.parse(auth,";","=");
+          //check if auth is missing params
+          if (!missing_params(authObj)) {
+              //call verifyAuth
+              verifyAuth(req, res, next, authObj, authParams);
+          }
+          else if (req.app.locals.backendsettings[companyId].key_transition == true) {
+              //try to decrypt auth with old key
+              return decryptAuth(authToken, req.app.locals.backendsettings[companyId].old_encryption_key)
+                .then(function(auth) {
+                    let authObj = querystring.parse(auth,";","=");
+                    if (missing_params(authObj)) {
+                        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+                        return;
+                    }
+
+                    //call verifyAuth
+                    verifyAuth(req, res, next, authObj, authParams);
+                }).catch(function(err) {
+                    response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+                });
+          }
+          else {
+              response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+          }
+      }).catch(function(err) {
+          response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+      });
+};
+
+//Verifies token and load parameters from auth
+function verifyAuth(req, res, next, auth, params) {
+    if(req.body.hdmi === 'true' && appIDs.indexOf(auth.appid) !== -1) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
+    }
+    else if(valid_timestamp(auth) === false){
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TIMESTAMP', 'no-store');
+    }
+    else if(valid_appid(auth) === true){
+        set_screensize(auth);
+
+        if(req.empty_cred){
+            req.auth_obj = auth;
+            next();
+        }
+        else{
+            //reading client data
+            models.login_data.findOne({
+                where: {username: auth.username, company_id: params.companyId}
+            }).then(function (result) {
+                if(result) {
+                    if(result.account_lock) {
+                        response.send_res(req, res, [], 703, -1, 'ACCOUNT_LOCK_DESCRIPTION', 'ACCOUNT_LOCK_DATA', 'no-store');
+                        return;
+                    }
+
+                    //the user is a normal client account. check user rights to make requests with his credentials
+                    if(auth.username !== 'guest') {
+                        authenticationHandler.authenticateAsync(auth.password, result.salt, result.password, function(authenticated) {
+                            if (authenticated === false) {
+                                //Requests may come after login with account kit.
+                                authenticationHandler.encryptPasswordAsync(result.username, result.salt, function(hash) {
+                                    if (hash !== auth.password.replace(/ /g, "+")) {
+                                        response.send_res(req, res, [], 704, -1, 'WRONG_PASSWORD_DESCRIPTION', 'WRONG_PASSWORD_DATA', 'no-store');
+                                        return
+                                    }
+
+                                    //Account kit user
+                                    req.thisuser = result;
+                                    req.auth_obj = auth;
+                                    next();
+                                })
+                                return
+                            }
+
+                            //Normal user was authenticated
+                            req.thisuser = result;
+                            req.auth_obj = auth;
+                            next();
+                        });
+                    }
+                    //login as guest is enabled and the user is guest. allow request to be processed
+                    else if(req.app.locals.backendsettings[params.companyId].allow_guest_login === true && auth.username === 'guest'){
+                        req.thisuser = result;
+                        req.auth_obj = auth;
+                        next();
+                    }
+                    //the user is a guest account but guest login is disabled. return error message
+                    else {
+                        response.send_res(req, res, [], 702, -1, 'GUEST_LOGIN_DISABLED_DESCRIPTION', 'GUEST_LOGIN_DISABLED_DATA', 'no-store');
+                    }
+                }
+                else response.send_res(req, res, [], 702, -1, 'USER_NOT_FOUND_DESCRIPTION', 'USER_NOT_FOUND_DATA', 'no-store');
+            }).catch(function(error) {
+                winston.error("Searching for the user account failed with error: ", error);
+                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+            });
+        }
+    }
+    else {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_APPID', 'no-store');
+    }
+}
+
+function decryptAuth(auth, key) {
+    return new Promise(function(resolve, reject) {
+        let iv = new Buffer(key);
+        auth = auth.replace(/(,\+)/g, ',').replace(/\\r|\\n|\n|\r/g, ''); //remove all occurrences of '+' characters before each token component, remove newlines and carriage returns
+        auth = auth.replace(/ /g, "+")
+        decryptAsync(key, iv, auth, function(err, plain) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(plain);
+        })
+    })
+}
+
+function decryptAsync(key, iv, cipherText, callback) {
+    key = new Buffer(key);
+    cipherText = new Buffer(cipherText, 'base64');
+    //Leave more than enough space for block cipher:
+    let target = Buffer.alloc(cipherText.length + 64);
+    let targetOffset = 0;
+
+    cryptoAsync.cipher(
+      'AES-128-CBC',
+      0, //encrypt=1, decrypt=0
+      key,
+      0,
+      key.length,
+      iv,
+      0,
+      iv.length,
+      cipherText,
+      0,
+      cipherText.length,
+      target,
+      targetOffset,
+      function(err, targetSize) {
+          if (err) {
+              return callback(err);
+          }
+
+          let plainText = target.slice(targetOffset, targetOffset + targetSize);
+          callback(undefined, plainText.toString('utf8'));
+      }
+    )
+}
 
 function missing_params(auth_obj){
     if(auth_obj.username == undefined || auth_obj.password == undefined || auth_obj.appid == undefined || auth_obj.boxid == undefined || auth_obj.timestamp == undefined) return true;
@@ -353,3 +598,7 @@ exports.isAuthTokenValid = function(req, res, next) {
 };
 
 
+exports.decryptAuth = decryptAuth;
+//Old isAllowed
+//exports.isAllowed = isAllowed;
+exports.isAllowed = isAllowedAsync;

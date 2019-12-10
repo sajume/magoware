@@ -45,7 +45,11 @@
         "/api/invoice",
         "/api/invoice/",
         "/api/salesreports",
-        "/api/salesreports/"
+        "/api/salesreports/",
+        "/api/public/customer",
+        "/api/public/customer/",
+        "/api/public/customer/:username/subscription",
+        "/api/public/customer/:username/package"
     ],
     "devices": [
         "/api/devices",
@@ -102,7 +106,8 @@
         "/file-upload/single-file/vodcategory/small_icon_url",
         "/file-upload/single-file/vod/icon_url",
         "/file-upload/single-file/subtitles/subtitle_url",
-        "/file-upload/single-file/vod/image_url"
+        "/file-upload/single-file/vod/image_url",
+        "/file-upload/single-file/vodMenu/icon_url"
     ],
     "plans_and_packages": [
         "/api/combos",
@@ -116,7 +121,9 @@
         "/api/packagetypes",
         "/api/packagetypes/",
         "/api/vodpackages",
-        "/api/vodpackages/"
+        "/api/vodpackages/",
+        "/api/public/packages",
+        "/api/public/combo"
     ],
     "tv_shows": [
         "/api/vodpackages",
@@ -166,12 +173,18 @@
         "/api/invoice",
         "/api/invoice/",
         "/api/users",
+        "/api/userAvailable",
         "/api/combos",
         "/api/salesreports",
         "/api/salesreports/",
         "/api/channels",
         "/api/channelstreamsources",
-        "/api/vodstreamsources"
+        "/api/vodstreamsources",
+        "/api/public/subscription",
+        "/api/public/packages",
+        "/api/public/customer/:username/subscription",
+        "/api/public/customer/:username/package",
+        "/api/public/combo"
     ],
     "notifications": [
         "/api/messages",
@@ -243,7 +256,9 @@
         "/api/users/",
         "/api/logindata/",
         "/api/combos/",
-        "/api/reports/expiresubscription"
+        "/api/reports/expiresubscription",
+        "/api/reports/expiresubscriptionbyday",
+        "/api/reports/lasttwoyearssales"
     ],
     "expiration_reports": [
         "/api/sales_monthly_expiration",

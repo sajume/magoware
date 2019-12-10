@@ -233,7 +233,7 @@ export default function (nga, admin) {
 
     channelstream.editionView()
         .title('<h4>Channel Streams <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.channel_id }}</h4>')
-        .actions(['list', 'delete'])
+        .actions(['delete'])
         .fields([
             channelstream.creationView().fields(),
         ]);

@@ -2449,13 +2449,19 @@ exports.vod_menu_list = function (req, res) {
   }
 
   models.vod_menu.findAll({
-    attributes: ['id', 'name', 'description', 'order', 'pin_protected', 'isavailable'],
+    attributes: ['id', 'name', 'description', 'order', 'pin_protected', 'isavailable',
+    [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon_url']
+  ],
     include: [{
       model: models.vod_menu_carousel,
       attributes: ['id', 'name', 'description', 'order', 'url', 'isavailable'],
       required: false,
       where: {company_id: req.thisuser.company_id}
     }],
+    order: [
+      [models.vod_menu_carousel, 'order', 'ASC'],
+      ['order', 'ASC']
+    ],
     where: whr
   }).then(function (result) {
 

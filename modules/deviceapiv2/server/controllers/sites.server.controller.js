@@ -44,7 +44,7 @@ exports.createaccount = function (req, res) {
 
 			//console.log(req.body);
 
-			var COMPANY_ID = typeof COMPANY_ID !== 'undefined' ? COMPANY_ID : 1;
+			const COMPANY_ID = typeof company_id !== 'undefined' ? company_id : 1;
 			login_data.findOne({
 				where: { username: req.body.username.toLowerCase(), company_id: COMPANY_ID }
 			}).then(function (login_record) {

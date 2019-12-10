@@ -104,61 +104,70 @@ exports.delete = function(req, res) {
 exports.list = function(req, res) {
 
     var qwhere = {},
-      final_where = {},
-      query = req.query;
+        final_where = {},
+        query = req.query;
 
-    if(query.q) {
-    qwhere.$or = {};
-    qwhere.$or.username = {};
-    qwhere.$or.username.$like = '%'+query.q+'%';
-    qwhere.$or.device_id = {};
-    qwhere.$or.device_id.$like = '%'+query.q+'%';
-    qwhere.$or.device_ip = {};
-    qwhere.$or.device_ip.$like = '%'+query.q+'%';
-    qwhere.$or.device_brand = {};
-    qwhere.$or.device_brand.$like = '%'+query.q+'%';
-    qwhere.$or.device_mac_address = {};
-    qwhere.$or.device_mac_address.$like = '%'+query.q+'%';
-    qwhere.$or.os = {};
-    qwhere.$or.os.$like = '%'+query.q+'%';
+    const company_id = req.get('company_id') || 1;
+
+    if (query.q) {
+        qwhere.$or = {};
+        qwhere.$or.username = {};
+        qwhere.$or.username.$like = '%' + query.q + '%';
+        qwhere.$or.device_id = {};
+        qwhere.$or.device_id.$like = '%' + query.q + '%';
+        qwhere.$or.device_ip = {};
+        qwhere.$or.device_ip.$like = '%' + query.q + '%';
+        qwhere.$or.device_brand = {};
+        qwhere.$or.device_brand.$like = '%' + query.q + '%';
+        qwhere.$or.device_mac_address = {};
+        qwhere.$or.device_mac_address.$like = '%' + query.q + '%';
+        qwhere.$or.os = {};
+        qwhere.$or.os.$like = '%' + query.q + '%';
     }
 
-  final_where.where = qwhere;
-  if(parseInt(query._start)) final_where.offset = parseInt(query._start);
-  if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
-  final_where.include = [];
+    final_where.where = qwhere;
+    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
+    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    final_where.include = [];
 
-  if(query.login_data_id) qwhere.login_data_id = query.login_data_id;
-  if(query.appid) qwhere.appid = query.appid;
-  if(query.app_version) qwhere.app_version = query.app_version;
-  if(query.ntype) qwhere.ntype = query.ntype;
-  if(query.device_active === 'true') qwhere.device_active = true;
-  else if(query.device_active === 'false') qwhere.device_active = false;
-  if(query.hdmi) qwhere.hdmi = query.hdmi;
-  if(query.username) qwhere.username = query.username;
+    if (query.login_data_id) qwhere.login_data_id = query.login_data_id;
+    if (query.appid) qwhere.appid = query.appid;
+    if (query.app_version) qwhere.app_version = query.app_version;
+    if (query.ntype) qwhere.ntype = query.ntype;
+    if (query.device_active === 'true') qwhere.device_active = true;
+    else if (query.device_active === 'false') qwhere.device_active = false;
+    if (query.hdmi) qwhere.hdmi = query.hdmi;
+    if (query.username) qwhere.username = query.username;
 
-  final_where.where.company_id = req.token.company_id; //return only records for this company
+    final_where.where.company_id = company_id; //return only records for this company
 
-  DBModel.findAndCountAll(
+    DBModel.findAndCountAll(
+        final_where
+    ).then(function (results) {
+        if (!results) {
+            res.status(404).send({
+                message: 'No data found'
+            });
+            return null;
+        } else {
 
-    final_where
+            res.setHeader("X-Total-Count", results.count);
+            let arr = [];
 
-  ).then(function(results) {
-    if (!results) {
-      res.status(404).send({
-        message: 'No data found'
-      });
-      return null;
-    } else {
+            for (let i = 0; i < results.rows.length; i++) {
+                results.rows.city = req.geoip.city;
+                let obj = results.rows[i];
+                obj.dataValues.city = req.geoip.city;
+                arr.push(obj)
+            }
 
-      res.setHeader("X-Total-Count", results.count);      
-      return res.json(results.rows);
-    }
-  }).catch(function(err) {
-    winston.error("Getting device list failed with error: ", err);
-      return res.jsonp(err);
-  });
+            return res.json(arr)
+        }
+    }).catch(function (err) {
+        winston.error("Getting device list failed with error: ", err);
+        return res.jsonp(err);
+    });
 };
 
 /**

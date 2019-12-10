@@ -31,6 +31,11 @@ module.exports = function(sequelize, DataTypes) {
             allowNull: false,
             defaultValue: 0
         },
+        seen_details: {
+            type: DataTypes.BOOLEAN,
+            allowNull: true,
+            defaultValue: 0
+        },
         device_id: {
             type: DataTypes.STRING,
             allowNull: false

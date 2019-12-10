@@ -9,7 +9,8 @@ var path = require('path'),
     moment = require('moment'),
     async = require('async'),
     schedule = require(path.resolve("./modules/deviceapiv2/server/controllers/schedule.server.controller.js")),
-    models = db.models;
+    models = db.models,
+    querystring = require('querystring');
 
 
 //RETURNS 12 hours of future Epg for a given channel
@@ -343,112 +344,145 @@ exports.event_get = function (req, res) {
  *   }
  */
 exports.get_event =  function(req, res) {
-    var client_timezone = req.query.device_timezone; //offset of the client will be added to time - related info
-    var current_human_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //get current time to compare with enddate
-    var interval_end_human = dateFormat((Date.now() + 43200000), "yyyy-mm-dd HH:MM:ss"); //get current time to compare with enddate, in the interval of 12 hours
-    var channel_title = '';
+    let timezone = '0';
+    if (req.headers.auth) {
+        let authEncoded = decodeURIComponent(req.headers.auth).replace(/[{}]/g, '')
+        let authParams = querystring.parse(authEncoded, ",", "=");
+        if (authParams[' device_timezone']) {
+            timezone = authParams[' device_timezone']
+        }
+        else if (authParams['device_timezone']) {
+            timezone = authParams['device_timezone']
+        }
+    }
+    timezone = timezone.replace(/ /g, '');
+    
+    let companyId = (req.headers.company_id) ? req.headers.company_id : 1
+    let intervalStart = new Date(Date.now()); //get current time to compare with enddate
+    let intervalEnd = new Date(Date.now())
+    intervalEnd.setHours(intervalEnd.getHours() + 12)
+    let channelNumber = req.query.channelNumber;
 
+    let hoursOffset = parseInt(timezone);
     models.channels.findOne({
-        attributes: ['title'],
-        where: {channel_number: req.query.channelNumber, company_id: req.thisuser.company_id}
-    }).then(function (thischannel) {
-        if(thischannel) channel_title = thischannel.title;
-        models.my_channels.findOne({
-            attributes: ['title'],
-            where: {channel_number: req.query.channelNumber, company_id: req.thisuser.company_id}
-        }).then(function (user_channel) {
-            if(user_channel) channel_title = user_channel.title;
-            models.epg_data.findAll({
-                attributes: [ 'id', 'title', 'short_description', 'short_name', 'duration_seconds', 'program_start', 'program_end', 'long_description' ],
-                order: [['program_start', 'ASC']],
-                limit: 6,
-                include: [
-                    {
-                        model: models.channels, required: true, attributes: ['title', 'channel_number'],
-                        where: {channel_number: req.query.channelNumber} //limit data only for this channel
-                    },
-                    {model: models.program_schedule,
-                        required: false, //left join
-                        attributes: ['id'],
-                        where: {login_id: req.thisuser.id}
-                    }
-                ],
-                where: Sequelize.and(
-                    {program_start: {lte: interval_end_human}, company_id: req.thisuser.company_id},
-                    Sequelize.or(
-                        Sequelize.and(
-                            {program_start:{lte:current_human_time}},
-                            {program_end:{gte:current_human_time}}
-                        ),
-                        Sequelize.and(
-                            {program_start: {gte:current_human_time}},
-                            {program_end:{lte:interval_end_human}}
-                        )
-                    )
-                )
-            }).then(function (result) {
-                var raw_result = [];
-                var default_programs = [];
-                //flatten nested json array
-                result.forEach(function(obj){
-                    var raw_obj = {};
+        where: { company_id: companyId, channel_number: channelNumber }
+    }).then(function (channel) {
+        if (!channel) {
+            response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+            return
+        }
 
-                    Object.keys(obj.toJSON()).forEach(function(k) {
-                        if (typeof obj[k] == 'object') {
-                            Object.keys(obj[k]).forEach(function(j) {
-                                var programstart = parseInt(obj.program_start.getTime()) +  parseInt((client_timezone) * 3600000);
-                                var programend = parseInt(obj.program_end.getTime()) +  parseInt((client_timezone) * 3600000);
-
-                                raw_obj.channelName = obj[k].title;
-                                raw_obj.id = obj.id;
-                                raw_obj.number = obj[k].channel_number;
-                                raw_obj.title = obj.title;
-                                raw_obj.scheduled = (!obj.program_schedules[0]) ? false : schedule.is_scheduled(obj.program_schedules[0].id);
-                                raw_obj.description = obj.long_description;
-                                raw_obj.shortname = obj.short_description;
-                                raw_obj.programstart = dateFormat(programstart, 'mm/dd/yyyy HH:MM:ss'); //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
-                                raw_obj.programend = dateFormat(programend, 'mm/dd/yyyy HH:MM:ss'); //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
-                                raw_obj.duration = obj.duration_seconds;
-                                raw_obj.progress = Math.round((Date.now() - obj.program_start.getTime() ) * 100 / (obj.program_end.getTime() - obj.program_start.getTime()));
-                            });
-                        }
-                    });
-                    raw_result.push(raw_obj);
-                });
-
-                if(result.length <6){
-                    for(var i=0; i<6-result.length; i++){
-                        var temp_obj = {};
-                        temp_obj.channelName = channel_title;
-                        temp_obj.id = -1;
-                        temp_obj.number = req.query.channelNumber;
-                        temp_obj.title = "Program of "+channel_title;
-                        temp_obj.scheduled = false;
-                        temp_obj.description = "Program of "+channel_title;
-                        temp_obj.shortname = "Program of "+channel_title;
-                        temp_obj.programstart = '01/01/1970 00:00:00';
-                        temp_obj.programend = '01/01/1970 00:00:00';
-                        temp_obj.duration = 0;
-                        temp_obj.progress = 0;
-                        raw_result.push(temp_obj);
-                    }
+        models.epg_data.findAll({
+            attributes: ['id', 'title', 'short_description', 'short_name', 'duration_seconds', 'program_start', 'program_end', 'long_description'],
+            where: {
+                company_id: companyId,
+                program_start: {
+                    $lte: intervalEnd
+                },
+                program_end: {
+                    $and: [
+                        {$lte: intervalEnd},
+                        {$gte: intervalStart}
+                    ]
                 }
-                response.send_res_get(req, res, raw_result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
-            }).catch(function(error) {
-                winston.error("Getting the next 6 events failed with error: ", error);
-                response.send_res_get(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-            });
-            return null;
-        }).catch(function(error) {
-            winston.error("Finding the title of the client's channel failed with error: ", error);
-            response.send_res_get(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+            },
+            order: [['program_start', 'ASC']],
+            limit: 2,
+            include: [
+                {
+                    model: models.channels, required: true, attributes: ['title', 'channel_number'],
+                    where: { channel_number: channelNumber } //limit data only for this channel
+                }
+            ],
+        }).then(function (epgs) {
+            let programs = []
+
+            if (!epgs || epgs.length == 0) {
+                programs.push(createDummyEpg(channelNumber, channel.title));
+                programs.push(createDummyEpg(channelNumber, channel.title));
+                response.send_res(req, res, programs, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
+                return;
+            }
+
+            let noCurrentEpg = false;
+
+            if (epgs.length > 0) {
+                let epg = epgs[0];
+                //Check if epg is not playing now but is in featureplaying at this time
+                if (epg.program_start.getTime() - intervalStart.getTime() > 5000) {
+                    noCurrentEpg = true;
+                    programs.push(createDummyEpg(channelNumber, channel.title));
+                }
+                //apply timezone
+                let programStart = new Date(epg.program_start).setHours(epg.program_start.getHours() + hoursOffset);
+                let programEnd = new Date(epg.program_end).setHours(epg.program_end.getHours() + hoursOffset);
+                let program = {
+                    id: epg.id,
+                    channelName: epg.channel.title,
+                    number: epg.channel.channel_number,
+                    title: epg.title,
+                    scheduled: false,
+                    description: epg.long_description,
+                    shortname: epg.short_description,
+                    programstart: dateFormat(programStart, 'UTC:mm/dd/yyyy HH:MM:ss'), //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
+                    programend: dateFormat(programEnd, 'UTC:mm/dd/yyyy HH:MM:ss'), //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
+                    duration: epg.duration_seconds,
+                    progress: Math.round((Date.now() - epg.program_start.getTime() ) * 100 / (epg.program_end.getTime() - epg.program_start.getTime()))
+                }
+                programs.push(program)
+            }
+
+            if (noCurrentEpg == false) {
+                if (epgs.length > 1) {
+                    let epg = epgs[1];
+                    //apply timezone
+                    let programStart = new Date(epg.program_start).setHours(epg.program_start.getHours() + hoursOffset);
+                    let programEnd = new Date(epg.program_end).setHours(epg.program_end.getHours() + hoursOffset);
+                    let program = {
+                        id: epg.id,
+                        channelName: epg.channel.title,
+                        number: epg.channel.channel_number,
+                        title: epg.title,
+                        scheduled: false,
+                        description: epg.long_description,
+                        shortname: epg.short_description,
+                        programstart: dateFormat(programStart, 'UTC:mm/dd/yyyy HH:MM:ss'), //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
+                        programend: dateFormat(programEnd, 'UTC:mm/dd/yyyy HH:MM:ss'), //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
+                        duration: epg.duration_seconds,
+                        progress: Math.round((Date.now() - epg.program_start.getTime() ) * 100 / (epg.program_end.getTime() - epg.program_start.getTime()))
+                    }
+                    programs.push(program)
+                }
+                else {
+                    programs.push(createDummyEpg(channelNumber, channel.title));
+                }
+            }
+
+            response.send_res(req, res, programs, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
+        }).catch(function(err) {
+            winston.error("Getting the list of epgs failed with error: ", err);
+            response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
         });
-        return null;
-    }).catch(function(error) {
-        winston.error("Finding the channel's title failed with error: ", error);
-        response.send_res_get(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+    }).catch(function(err) {
+        winston.error("Getting the list of channels failed with error: ", err);
+        response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
     });
 
+    function createDummyEpg(channelNumber, channelTitle) {
+        return {
+            id: -1,
+            channelName: channelTitle,
+            number: channelNumber,
+            title: 'Programs of ' + channelTitle,
+            scheduled: false,
+            description: 'Programs of ' + channelTitle,
+            shortname: 'Programs of ' + channelTitle,
+            programstart: '01/01/1970 00:00:00', //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
+            programend: '01/01/1970 00:00:00', //add timezone offset to program_start timestamp, format it as M/D/Y H:m:s
+            duration: 0,
+            progress: 0
+        }
+    }
 };
 
 
@@ -497,106 +531,104 @@ exports.get_event =  function(req, res) {
  *
  */
 exports.current_epgs =  function(req, res) {
-    var server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
-    var raw_result = [];
+  const server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
+  const device_timezone = req.body.device_timezone;
+  let raw_result = [];
 
-    var qwhere = {};
-    if(req.thisuser.show_adult == 0) qwhere.pin_protected = 0; //show adults filter
-    else qwhere.pin_protected != ''; //avoid adult filter
-    qwhere.company_id = req.thisuser.company_id;
+  let qwhere = {};
+  if (req.thisuser.show_adult == 0) qwhere.pin_protected = 0; //show adults filter
+  else qwhere.pin_protected !== ''; //avoid adult filter
+  qwhere.company_id = req.thisuser.company_id;
+  qwhere.isavailable = true;
 
-    // requisites for streams provided by the user
-    var userstream_qwhere = {"isavailable": true, "login_id": req.thisuser.id};
+  let stream_qwhere = {};
+  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
+  if (req.auth_obj.appid == 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
+  stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
+  stream_qwhere.stream_mode = 'live';
+  stream_qwhere.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
 
-    // requisites for streams served by the company
-    var stream_qwhere = {};
-    if(req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
-    if(req.auth_obj.appid === 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
-    stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
-    stream_qwhere.stream_mode = 'live';
-    stream_qwhere.stream_resolution = {$like: "%"+req.auth_obj.appid+"%"};
+  let catchupstream_where = {
+    stream_source_id: req.thisuser.channel_stream_source_id,
+    company_id: req.thisuser.company_id
+  };
 
-    models.my_channels.findAll({
-        attributes: ['channel_number', 'title'], order: [[ 'channel_number', 'ASC' ]], where: userstream_qwhere,
-        include: [{ model: models.genre, required: true, attributes: ['icon_url'], where: {is_available: true, company_id: req.thisuser.company_id} }]
-    }).then(function (user_channel) {
-        models.channels.findAll({
-            attributes: ['title', 'channel_number'], order: [[ 'channel_number', 'ASC' ]], where: qwhere,
+  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) catchupstream_where.stream_format = {$not: 0}; //don't send mpd streams for default player
+  if (req.auth_obj.appid == 3) catchupstream_where.stream_format = 2; // send only hls streams for ios application
+  catchupstream_where.stream_mode = 'catchup'; //filter streams based on device resolution
+  catchupstream_where.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
+
+
+  models.channels.findAll({
+    attributes: ['title', 'channel_number'],
+    order: [['channel_number', 'ASC']],
+    where: qwhere,
+    include: [
+      {
+        model: models.packages_channels,
+        required: true,
+        attributes: [],
+        include: [
+          {
+            model: models.package,
+            required: true,
+            attributes: [],
+            where: {package_type_id: req.auth_obj.screensize},
             include: [
-                {model: models.packages_channels,
-                    required: true,
-                    attributes:[],
-                    include:[
-                        {model: models.package,
-                            required: true,
-                            attributes: [],
-                            where: {package_type_id: req.auth_obj.screensize},
-                            include:[
-                                {model: models.subscription,
-                                    required: true,
-                                    attributes: [],
-                                    where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
-                                }
-                            ]}
-                    ]},
-                { model: models.channel_stream, required: true, attributes:[] },
-                {
-                    model: models.epg_data, required: false,
-                    attributes: [
-                        'id', 'title', 'short_description', 'long_description', 'short_name', 'duration_seconds',
-                        db_funct.final_time('program_start', 'program_start', 'HOUR', req.body.device_timezone, '%m/%d/%Y %H:%i:%s'),
-                        db_funct.final_time('program_end', 'program_end', 'HOUR', req.body.device_timezone, '%m/%d/%Y %H:%i:%s'),
-                        db_funct.add_constant(false, 'scheduled')
-                    ],
-                    where: {program_start: {lte: server_time}, program_end: {gte: server_time}, company_id: req.thisuser.company_id}
-                }
+              {
+                model: models.subscription,
+                required: true,
+                attributes: [],
+                where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
+              }
             ]
-        }).then(function (channels) {
-            for(var i=0; i< channels.length; i++){
-                var raw_obj = {};
-                raw_obj.channelName =  channels[i].title;
-                raw_obj.title =  (channels[i].epg_data[0]) ? channels[i].epg_data[0].title : "Program of "+ channels[i].title;
-                raw_obj.number =  channels[i].channel_number;
-                raw_obj.id = (channels[i].epg_data[0]) ? channels[i].epg_data[0].id : -1;
-                raw_obj.scheduled = false;
-                raw_obj.shortname = (channels[i].epg_data[0]) ? channels[i].epg_data[0].short_description : "Program of "+ channels[i].title;
-                raw_obj.description = (channels[i].epg_data[0]) ?  channels[i].epg_data[0].long_description : "Program of "+ channels[i].title;
-                raw_obj.programstart = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_start : "01/01/1970 00:00:00";
-                raw_obj.programend = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_end : "01/01/1970 00:00:00";
-                raw_obj.duration = (channels[i].epg_data[0]) ? channels[i].epg_data[0].duration_seconds : 0;
-                raw_obj.progress = (channels[i].epg_data[0]) ? Math.round(((Date.now() + 3600000*req.body.device_timezone) - moment(channels[i].epg_data[0].program_start, 'MM/DD/YYYY HH:mm:ss').format('x')) / (channels[i].epg_data[0].duration_seconds * 10)) : 0;
-                raw_obj.status = 2;
+          }
+        ]
+      },
+      {
+        model: models.channel_stream,
+        required: true,
+        attributes: [],
+        where: stream_qwhere
+      },
+      {
+        model: models.epg_data, required: false,
+        attributes: [
+          'id', 'title', 'short_description', 'long_description', 'short_name', 'duration_seconds',
+          db_funct.final_time('program_start', 'program_start', 'HOUR', device_timezone, '%m/%d/%Y %H:%i:%s'),
+          db_funct.final_time('program_end', 'program_end', 'HOUR', device_timezone, '%m/%d/%Y %H:%i:%s'),
+          db_funct.add_constant(false, 'scheduled')
+        ],
+        where: {
+          program_start: {lte: server_time},
+          program_end: {gte: server_time},
+          company_id: req.thisuser.company_id
+        }
+      }
+    ]
+  }).then(function (channels) {
+    for (let i = 0; i < channels.length; i++) {
+      let raw_obj = {};
+      raw_obj.channelName = channels[i].title;
+      raw_obj.title = (channels[i].epg_data[0]) ? channels[i].epg_data[0].title : "Program of " + channels[i].title;
+      raw_obj.number = channels[i].channel_number;
+      raw_obj.id = (channels[i].epg_data[0]) ? channels[i].epg_data[0].id : -1;
+      raw_obj.scheduled = false;
+      raw_obj.shortname = (channels[i].epg_data[0]) ? channels[i].epg_data[0].short_description : "Program of " + channels[i].title;
+      raw_obj.description = (channels[i].epg_data[0]) ? channels[i].epg_data[0].long_description : "Program of " + channels[i].title;
+      raw_obj.programstart = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_start : "01/01/1970 00:00:00";
+      raw_obj.programend = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_end : "01/01/1970 00:00:00";
+      raw_obj.duration = (channels[i].epg_data[0]) ? channels[i].epg_data[0].duration_seconds : 0;
+      raw_obj.progress = (channels[i].epg_data[0]) ? Math.round(((Date.now() + 3600000 * device_timezone) - moment(channels[i].epg_data[0].program_start, 'MM/DD/YYYY HH:mm:ss').format('x')) / (channels[i].epg_data[0].duration_seconds * 10)) : 0;
+      raw_obj.status = 2;
 
-                raw_result.push(raw_obj);
-            }
-            if(user_channel){
-                for(var i=0; i<user_channel.length; i++){
-                    var raw_obj = {};
-                    raw_obj.channelName =  user_channel[i].title;
-                    raw_obj.title =  user_channel[i].title;
-                    raw_obj.number =  user_channel[i].channel_number;
-                    raw_obj.id = -1;
-                    raw_obj.scheduled = false;
-                    raw_obj.shortname = "Program of "+ user_channel[i].title;
-                    raw_obj.description = "Program of "+ user_channel[i].title;
-                    raw_obj.programstart = "01/01/1970 00:00:00";
-                    raw_obj.programend = "01/01/1970 00:00:00";
-                    raw_obj.duration = 0;
-                    raw_obj.progress = 0;
-                    raw_obj.status = 2;
-                    raw_result.push(raw_obj);
-                }
-            }
-            response.send_res(req, res, raw_result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
-        }).catch(function(error) {
-            winston.error("Finding the channels available for this user failed with error: ", error);
-            response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-        });
-        return null;
-    }).catch(function(error) {
-        winston.error("Finding the client's personal channels failed with error: ", error);
-        response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-    });
+      raw_result.push(raw_obj);
+    }
+    response.send_res_get(req, res, raw_result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
+  }).catch(function (error) {
+    winston.error("Finding the channels available to the user failed with error: ", error);
+    response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+  });
 
 };
 
@@ -632,116 +664,113 @@ exports.current_epgs =  function(req, res) {
  *          "programstart": "mm/dd/yyyy HH:MM:ss",
  *          "programend": "mm/dd/yyyy HH:MM:ss",
  *          "duration": 1800, //in seconds
- *          "progress": 20 //value in range [0:100] for current event, <0 for future events
+ *          "progress": 20 //value in range [0:100] for current event, <0 for future eventsError deleting file at common controller, error:
  *          "status": 2 // static value, means that the event is currently being transmitted
  *       }, ....
  *       ]
  *   }
  */
-exports.get_current_epgs =  function(req, res) {
-    var server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
-    var raw_result = [];
+exports.get_current_epgs = function (req, res) {
+  const server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
+  const device_timezone = req.query.device_timezone || req.auth_obj.device_timezone;
 
-    var qwhere = {};
-    if(req.thisuser.show_adult == 0) qwhere.pin_protected = 0; //show adults filter
-    else qwhere.pin_protected != ''; //avoid adult filter
-    qwhere.company_id = req.thisuser.company_id;
+  let raw_result = [];
 
-    // requisites for streams provided by the user
-    var userstream_qwhere = {"isavailable": true, "login_id": req.thisuser.id};
+  let qwhere = {};
+  if (req.thisuser.show_adult === 0) qwhere.pin_protected = 0; //show adults filter
+  else qwhere.pin_protected !== ''; //avoid adult filter
+  qwhere.company_id = req.thisuser.company_id;
+  qwhere.isavailable = true;
 
-    // requisites for streams served by the company
-    var stream_qwhere = {};
-    if(req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
-    if(req.auth_obj.appid === 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
-    stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
-    stream_qwhere.stream_mode = 'live';
-    stream_qwhere.stream_resolution = {$like: "%"+req.auth_obj.appid+"%"};
+  let stream_qwhere = {};
+  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
+  if (req.auth_obj.appid == 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
+  stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
+  stream_qwhere.stream_mode = 'live';
+  stream_qwhere.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
 
-    models.my_channels.findAll({
-        attributes: ['channel_number', 'title'], order: [[ 'channel_number', 'ASC' ]], where: userstream_qwhere,
-        include: [{ model: models.genre, required: true, attributes: ['icon_url'], where: {is_available: true, company_id: req.thisuser.company_id} }]
-    }).then(function (user_channel) {
-        models.channels.findAll({
-            attributes: ['title', 'channel_number'], order: [[ 'channel_number', 'ASC' ]], where: qwhere,
+  let catchupstream_where = {
+    stream_source_id: req.thisuser.channel_stream_source_id,
+    company_id: req.thisuser.company_id
+  };
+
+  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) catchupstream_where.stream_format = {$not: 0}; //don't send mpd streams for default player
+  if (req.auth_obj.appid == 3) catchupstream_where.stream_format = 2; // send only hls streams for ios application
+  catchupstream_where.stream_mode = 'catchup'; //filter streams based on device resolution
+  catchupstream_where.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
+
+
+  models.channels.findAll({
+    attributes: ['title', 'channel_number'],
+    order: [['channel_number', 'ASC']],
+    where: qwhere,
+    include: [
+      {
+        model: models.packages_channels,
+        required: true,
+        attributes: [],
+        include: [
+          {
+            model: models.package,
+            required: true,
+            attributes: [],
+            where: {package_type_id: req.auth_obj.screensize},
             include: [
-                {model: models.packages_channels,
-                    required: true,
-                    attributes:[],
-                    include:[
-                        {model: models.package,
-                            required: true,
-                            attributes: [],
-                            where: {package_type_id: req.auth_obj.screensize},
-                            include:[
-                                {model: models.subscription,
-                                    required: true,
-                                    attributes: [],
-                                    where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
-                                }
-                            ]}
-                    ]},
-                { model: models.channel_stream, required: true, attributes:[] },
-                {
-                    model: models.epg_data, required: false,
-                    attributes: [
-                        'id', 'title', 'short_description', 'long_description', 'short_name', 'duration_seconds',
-                        db_funct.final_time('program_start', 'program_start', 'HOUR', req.query.device_timezone, '%m/%d/%Y %H:%i:%s'),
-                        db_funct.final_time('program_end', 'program_end', 'HOUR', req.query.device_timezone, '%m/%d/%Y %H:%i:%s'),
-                        db_funct.add_constant(false, 'scheduled')
-                    ],
-                    where: {program_start: {lte: server_time}, program_end: {gte: server_time}, company_id: req.thisuser.company_id}
-                }
+              {
+                model: models.subscription,
+                required: true,
+                attributes: [],
+                where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
+              }
             ]
-        }).then(function (channels) {
-            for(var i=0; i< channels.length; i++){
-                var raw_obj = {};
-                raw_obj.channelName =  channels[i].title;
-                raw_obj.title =  (channels[i].epg_data[0]) ? channels[i].epg_data[0].title : "Program of "+ channels[i].title;
-                raw_obj.number =  channels[i].channel_number;
-                raw_obj.id = (channels[i].epg_data[0]) ? channels[i].epg_data[0].id : -1;
-                raw_obj.scheduled = false;
-                raw_obj.shortname = (channels[i].epg_data[0]) ? channels[i].epg_data[0].short_description : "Program of "+ channels[i].title;
-                raw_obj.description = (channels[i].epg_data[0]) ?  channels[i].epg_data[0].long_description : "Program of "+ channels[i].title;
-                raw_obj.programstart = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_start : "01/01/1970 00:00:00";
-                raw_obj.programend = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_end : "01/01/1970 00:00:00";
-                raw_obj.duration = (channels[i].epg_data[0]) ? channels[i].epg_data[0].duration_seconds : 0;
-                raw_obj.progress = (channels[i].epg_data[0]) ? Math.round(((Date.now() + 3600000*req.query.device_timezone) - moment(channels[i].epg_data[0].program_start, 'MM/DD/YYYY HH:mm:ss').format('x')) / (channels[i].epg_data[0].duration_seconds * 10)) : 0;
-                raw_obj.status = 2;
+          }
+        ]
+      },
+      {
+        model: models.channel_stream,
+        required: true,
+        attributes: [],
+        where: stream_qwhere
+      },
+      {
+        model: models.epg_data, required: false,
+        attributes: [
+          'id', 'title', 'short_description', 'long_description', 'short_name', 'duration_seconds',
+          db_funct.final_time('program_start', 'program_start', 'HOUR', device_timezone, '%m/%d/%Y %H:%i:%s'),
+          db_funct.final_time('program_end', 'program_end', 'HOUR', device_timezone, '%m/%d/%Y %H:%i:%s'),
+          db_funct.add_constant(false, 'scheduled')
+        ],
+        where: {
+          program_start: {lte: server_time},
+          program_end: {gte: server_time},
+          company_id: req.thisuser.company_id
+        }
+      }
+    ]
+  }).then(function (channels) {
+    for (let i = 0; i < channels.length; i++) {
+      let raw_obj = {};
+      raw_obj.channelName = channels[i].title;
+      raw_obj.title = (channels[i].epg_data[0]) ? channels[i].epg_data[0].title : "Program of " + channels[i].title;
+      raw_obj.number = channels[i].channel_number;
+      raw_obj.id = (channels[i].epg_data[0]) ? channels[i].epg_data[0].id : -1;
+      raw_obj.scheduled = false;
+      raw_obj.shortname = (channels[i].epg_data[0]) ? channels[i].epg_data[0].short_description : "Program of " + channels[i].title;
+      raw_obj.description = (channels[i].epg_data[0]) ? channels[i].epg_data[0].long_description : "Program of " + channels[i].title;
+      raw_obj.programstart = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_start : "01/01/1970 00:00:00";
+      raw_obj.programend = (channels[i].epg_data[0]) ? channels[i].epg_data[0].program_end : "01/01/1970 00:00:00";
+      raw_obj.duration = (channels[i].epg_data[0]) ? channels[i].epg_data[0].duration_seconds : 0;
+      raw_obj.progress = (channels[i].epg_data[0]) ? Math.round(((Date.now() + 3600000 * device_timezone) - moment(channels[i].epg_data[0].program_start, 'MM/DD/YYYY HH:mm:ss').format('x')) / (channels[i].epg_data[0].duration_seconds * 10)) : 0;
+      raw_obj.status = 2;
 
-                raw_result.push(raw_obj);
-            }
-            if(user_channel){
-                for(var i=0; i<user_channel.length; i++){
-                    var raw_obj = {};
-                    raw_obj.channelName =  user_channel[i].title;
-                    raw_obj.title =  user_channel[i].title;
-                    raw_obj.number =  user_channel[i].channel_number;
-                    raw_obj.id = -1;
-                    raw_obj.scheduled = false;
-                    raw_obj.shortname = "Program of "+ user_channel[i].title;
-                    raw_obj.description = "Program of "+ user_channel[i].title;
-                    raw_obj.programstart = "01/01/1970 00:00:00";
-                    raw_obj.programend = "01/01/1970 00:00:00";
-                    raw_obj.duration = 0;
-                    raw_obj.progress = 0;
-                    raw_obj.status = 2;
-                    raw_result.push(raw_obj);
-                }
-            }
-            response.send_res_get(req, res, raw_result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
-        }).catch(function(error) {
-            winston.error("Finding the channels available to the user failed with error: ", error);
-            response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-        });
-        return null;
-    }).catch(function(error) {
-        winston.error("Finding the user's personal channels failed with error: ", error);
-        response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-    });
-
+      raw_result.push(raw_obj);
+    }
+    response.send_res_get(req, res, raw_result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
+  }).catch(function (error) {
+    winston.error("Finding the channels available to the user failed with error: ", error);
+    response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+  });
 };
-
 
 //RETURNS 4 hours of Epg for the channels listed in the number parameter
 /**

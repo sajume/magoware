@@ -103,16 +103,16 @@ export default function (nga, admin){
                 })
                 .perPage(-1)
                 .label('Combo *'),
-			nga.field('on_behalf_id','reference')
-			   .targetEntity(admin.getEntity('Users'))
-				.targetField(nga.field('username'))
+            nga.field('on_behalf_id','reference')
+                .targetEntity(admin.getEntity('userAvailable'))
+                .targetField(nga.field('username'))
                 .remoteComplete(true, {
                     refreshDelay: 300,
                     // populate choices from the response of GET /posts?q=XXX
                     searchQuery: function(search) { return { q: search }; }
                 })
                 .perPage(10) // limit the number of results to 10
-				.label('On Behalf Id'),
+                .label('On Behalf Id'),
 			nga.field('start_date','date')
                 .attributes({ placeholder: 'Start date' })
                 .validation({ required: true })

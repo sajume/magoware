@@ -113,9 +113,9 @@ exports.settings = function (req, res) {
                     }
                     ]
                 }).then(function (enddate) {
-                    var end_date = (enddate[0]) ? moment(enddate[0].end_date, "YYYY-M-DD HH:mm:ss") : moment(new Date(), "YYYY-M-DD HH:mm:ss");  //if no subscription found, enddate set as current time to return 0 days left
-                    var current_date = moment(new Date(), "YYYY-M-DD HH:mm:ss");
-                    var seconds_left = end_date.diff(current_date, 'seconds');
+                    const end_date = (enddate[0]) ? moment(enddate[0].end_date, "YYYY-M-DD HH:mm:ss") : moment(new Date(), "YYYY-M-DD HH:mm:ss");  //if no subscription found, enddate set as current time to return 0 days left
+                    const current_date = moment(new Date(), "YYYY-M-DD HH:mm:ss");
+                    const seconds_left = end_date.diff(current_date, 'seconds');
                     //re-evaluating push task for subscription end. All current tasks of this screen size are deleted, a new task is created
                     if (req.auth_obj.appid === '2' || req.auth_obj.appid === '3') {
                         if (livetv_s_subscription_end[req.thisuser.id]) {
@@ -141,12 +141,12 @@ exports.settings = function (req, res) {
                             delete vod_l_subscription_end[req.thisuser.id];
                         }
                     }
-
-                    if (seconds_left > 0) {
+                    //kontrollo nqs ka mbetur te pakten nje sekonde deri ne 1 dite (ne sekonda)
+                    if (seconds_left > 0 && seconds_left < 86400) {
                         schedule.end_subscription(req.thisuser.id, seconds_left * 1000, [req.auth_obj.appid], req.auth_obj.screensize, req.body.activity, req.app.locals.backendsettings[req.thisuser.company_id].firebase_key); //create push task for the ending of this type of subscription
                     }
 
-                    var daysleft = Math.ceil(Number(Math.ceil(seconds_left / 86400).toFixed(0)));
+                    const daysleft = Math.ceil(Number(Math.ceil(seconds_left / 86400).toFixed(0)));
                     callback(null, login_data, daysleft, seconds_left, refresh);
                     return null;
                 }).catch(function (error) {
@@ -415,15 +415,16 @@ function isvalidoffset(offset) {
 
 exports.get_settings = function (req, res) {
 
-    var login_data = req.thisuser;
-    var activity = 'livetv';
-    var iptimeoffset = req.app.locals.timezones[req.geoip.timezone];
-    let thisreqheaders = querystring.parse(req.get("auth"),",",":");
-    var get_beta_app = (req.thisuser.beta_user) ? [0, 1] : [0];
+    const login_data = req.thisuser;
+    const activity = 'livetv';
+    const iptimeoffset = req.app.locals.timezones[req.geoip.timezone];
+    const get_beta_app = (req.thisuser.beta_user) ? [0, 1] : [0];
 
 
     models.subscription.findAll({
-        attributes: ['end_date'], where: { login_id: login_data.id }, limit: 1, order: [['end_date', 'DESC']],
+        attributes: ['end_date'], where: { login_id: login_data.id },
+        limit: 1,
+        order: [['end_date', 'DESC']],
         include: [{
             model: models.package, required: true, attributes: ['id'],
             include: [
@@ -438,9 +439,9 @@ exports.get_settings = function (req, res) {
         ]
     }).then(function (enddate) {
         //res.send(enddate);
-        var end_date = (enddate[0]) ? moment(enddate[0].end_date, "YYYY-M-DD HH:mm:ss") : moment(new Date(), "YYYY-M-DD HH:mm:ss");  //if no subscription found, enddate set as current time to return 0 days left
-        var current_date = moment(new Date(), "YYYY-M-DD HH:mm:ss");
-        var seconds_left = end_date.diff(current_date, 'seconds');
+        const end_date = (enddate[0]) ? moment(enddate[0].end_date, "YYYY-M-DD HH:mm:ss") : moment(new Date(), "YYYY-M-DD HH:mm:ss");  //if no subscription found, enddate set as current time to return 0 days left
+        const current_date = moment(new Date(), "YYYY-M-DD HH:mm:ss");
+        const seconds_left = end_date.diff(current_date, 'seconds');
 
         //re-evaluating push task for subscription end. All current tasks of this screen size are deleted, a new task is created
 
@@ -469,26 +470,27 @@ exports.get_settings = function (req, res) {
             }
         }
 
-        if (seconds_left > 0) {
+        //kontrollo nqs ka mbetur te pakten nje sekonde deri ne 1 dite (ne sekonda)
+        if (seconds_left > 0 && seconds_left < 86400) {
             schedule.end_subscription(req.thisuser.id, seconds_left * 1000, [req.auth_obj.appid], req.auth_obj.screensize, req.body.activity, req.app.locals.backendsettings[req.thisuser.company_id].firebase_key); //create push task for the ending of this type of subscription
         }
 
-        var daysleft = Math.ceil(Number(Math.ceil(seconds_left / 86400).toFixed(0)));
+        const daysleft = Math.ceil(Number(Math.ceil(seconds_left / 86400).toFixed(0)));
 
-        var mainmenurefresh = (req.body.activity === 'login') ? refresh : false;
-        var vodrefresh = (req.body.activity === 'vod') ? refresh : false;
-        var livetvrefresh = (req.body.activity === 'livetv') ? refresh : false;
+        const mainmenurefresh = (req.body.activity === 'login') ? refresh : false;
+        const vodrefresh = (req.body.activity === 'vod') ? refresh : false;
+        const livetvrefresh = (req.body.activity === 'livetv') ? refresh : false;
 
         //return images based on appid
-        var logo_url = (req.auth_obj.screensize === 1) ? req.app.locals.backendsettings[req.thisuser.company_id].box_logo_url : req.app.locals.backendsettings[req.thisuser.company_id].mobile_logo_url;
-        var background_url = (req.auth_obj.screensize === 1) ? req.app.locals.backendsettings[req.thisuser.company_id].box_background_url : req.app.locals.backendsettings[req.thisuser.company_id].mobile_background_url;
-        var vod_background_url = (req.auth_obj.appid == 1) ? req.app.locals.backendsettings[req.thisuser.company_id].vod_background_url : req.app.locals.backendsettings[req.thisuser.company_id].vod_background_url;
+        const logo_url = (req.auth_obj.screensize === 1) ? req.app.locals.backendsettings[req.thisuser.company_id].box_logo_url : req.app.locals.backendsettings[req.thisuser.company_id].mobile_logo_url;
+        const background_url = (req.auth_obj.screensize === 1) ? req.app.locals.backendsettings[req.thisuser.company_id].box_background_url : req.app.locals.backendsettings[req.thisuser.company_id].mobile_background_url;
+        const vod_background_url = (req.auth_obj.appid == 1) ? req.app.locals.backendsettings[req.thisuser.company_id].vod_background_url : req.app.locals.backendsettings[req.thisuser.company_id].vod_background_url;
 
         //days_left message is empty if user still has subscription
-        var lang = (languages[req.body.language]) ? req.body.language : 'eng'; //handle missing language variables, serving english as default
-        var days_left_message = (daysleft > 0) ? "" : languages[lang].language_variables['NO_SUBSCRIPTION'];
+        const lang = (languages[req.body.language]) ? req.body.language : 'eng'; //handle missing language variables, serving english as default
+        const days_left_message = (daysleft > 0) ? "" : languages[lang].language_variables['NO_SUBSCRIPTION'];
 
-        var response_data = [{
+        const response_data = [{
             'int': process.env.NODE_APP_INSTANCE,
             "logo_url": req.app.locals.backendsettings[req.thisuser.company_id].assets_url + "" + logo_url,
             "background_url": req.app.locals.backendsettings[req.thisuser.company_id].assets_url + "" + background_url,
@@ -524,7 +526,7 @@ exports.get_settings = function (req, res) {
 
 
         models.app_management.findOne({
-            attributes: ['id', 'title', 'description', 'url', 'isavailable', 'updatedAt'],
+            attributes: ['id', 'title', 'description', 'url', 'isavailable', 'updatedAt', 'availability_denominator'],
             limit: 1,
             where: {
                 beta_version: { in: get_beta_app },
@@ -538,14 +540,32 @@ exports.get_settings = function (req, res) {
             order: [['updatedAt', 'DESC']] //last updated record
         }).then(function (result) {
             if (result) {
-                id = result['id'];
-                name = result['title'];
-                updatedate = dateFormat(result['updatedAt'], "yyyy-mm-dd hh:MM:ss:000");
-                description = result['description'];
-                location = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + '' + result['url'];
-                activated = result['isavailable'];
-                response_data[0].available_upgrade = true;
-                response.send_res_get(req, res, response_data, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
+                let upgradeAvailable = false;
+                let threshold = 1.0 / result.availability_denominator;
+                if (threshold < 1) {
+                    let coeff = Math.random();
+                    if (coeff <= threshold) {
+                        upgradeAvailable = true;
+                    }
+                } 
+                else {
+                    upgradeAvailable = true;
+                }
+                
+                if (upgradeAvailable) {
+                    id = result['id'];
+                    name = result['title'];
+                    updatedate = dateFormat(result['updatedAt'], "yyyy-mm-dd hh:MM:ss:000");
+                    description = result['description'];
+                    location = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + '' + result['url'];
+                    activated = result['isavailable'];
+                    response_data[0].available_upgrade = true;
+                    response.send_res_get(req, res, response_data, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
+                } 
+                else {
+                    response_data[0].available_upgrade = false;
+                    response.send_res_get(req, res, response_data, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=43200');
+                }
             }
             else {
                 //no upgrade condition found.

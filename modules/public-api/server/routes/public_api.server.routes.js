@@ -40,7 +40,13 @@ module.exports = function(app) {
     app.route('/api/public/subscription')
         .all(policy.isApiKeyAllowed)
         .post(subscriptionApiHandler.addSubscription)
-        .put(subscriptionApiHandler.cancelSubscription);
+        .put(subscriptionApiHandler.cancelSubscription)
+        .get(subscriptionApiHandler.listSubscription);
+
+    app.route('/api/public/packages')
+        .all(policy.isApiKeyAllowed)
+        .get(subscriptionApiHandler.listPackages);
+
 
     app.route("/api/public/customer/:username/subscription")
         .all(policy.isApiKeyAllowed)

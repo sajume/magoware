@@ -10,7 +10,7 @@ var path = require('path'),
   async = require('async'),
   winston = require(path.resolve('./config/lib/winston')),
   authenticationHandler = require(path.resolve('./modules/deviceapiv2/server/controllers/authentication.server.controller')),
-  whiteilst_IPs = [];
+  whiteilst_IPs = [''];
 
 /*
 * @api {get} /apiv2/payments/stripe/getkey Get Stripe Token Key
@@ -431,7 +431,7 @@ exports.render_payment_form = function (req, res) {
 
 // not in use yet
 exports.stripe_order_charge = function (req, res) {
-  var stripe = require('stripe')('sk_test_Z4OH3P3t6XXwInfSUAnk2t0y');
+  var stripe = require('stripe')('');
   var thisresponse = new response.OK();
   var sale_or_refund = 1;
 

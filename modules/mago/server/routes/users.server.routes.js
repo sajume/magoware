@@ -4,7 +4,8 @@ var path = require('path'),
     db = require(path.resolve('./config/lib/sequelize')).models,
     policy = require('../policies/mago.server.policy'),
     users = require(path.resolve('./modules/mago/server/controllers/users.server.controller')),
-    auth = require(path.resolve('./modules/mago/server/controllers/authentication.controller'));
+    auth = require(path.resolve('./modules/mago/server/controllers/authentication.controller')),
+    userAvailable = require(path.resolve('./modules/mago/server/controllers/userAvailable.server.controller'));
 
 
 module.exports = function(app) {
@@ -75,5 +76,11 @@ module.exports = function(app) {
         .post(auth.changepassword1);
 
     app.param('ResellersUsersId', users.dataByID);
+
+
+    app.route('/api/userAvailable')
+        .all(policy.Authenticate)
+        .all(policy.isAllowed)
+        .get(userAvailable.list);
 
 };

@@ -369,7 +369,7 @@ exports.company_list = function (req, res, next) {
         response.send_res_get(req, res, [], 704, -1, 'WRONG_PASSWORD_DESCRIPTION', 'WRONG_PASSWORD_DATA', 'no-store');
       }
       //if one password match
-      else if (company_list.length == 1) {
+      else if (company_list.length == 1 && companies[0].setting.id === 1) {
         req.auth_obj.company_id = companies[0].setting.id;
         req.body.company_id = companies[0].setting.id;
         req.body.isFromCompanyList = true;
@@ -431,7 +431,6 @@ exports.loginv2 = function (req, res) {
           os: decodeURIComponent(req.body.os),
           language: req.body.language,
           company_id: req.thisuser.company_id
-
           //googleappid:        req.body.googleappid
         }).then(function (result) {
           var response_data = [{
@@ -488,3 +487,23 @@ function upsertDevice(device) {
     });
   });
 }
+
+
+exports.listMultiCompanies = function (req, res) {
+  const username = req.params.username;
+
+  models.login_data.findAll({
+    attributes: ['id', 'username', 'company_id'],
+    where: {username: username},
+    include: [{model: models.settings, attributes: ['id', 'company_name']}]
+  }).then(function (companies) {
+    if (!companies) {
+      response.send_res_get(req, res, [], 704, -1, 'USER_NOT_FOUND_DATA', 'USER_NOT_FOUND_DATA', 'no-store');
+    } else {
+        response.send_res_get(req, res, companies, 300, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
+    }
+  }).catch(function (error) {
+    winston.error("Finding the list of companies for this user 2 failed with error: ", error);
+    response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+  });
+};

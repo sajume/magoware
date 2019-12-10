@@ -45,7 +45,7 @@
 /***/ (function(module, exports, __webpack_require__) {
 
 	__webpack_require__(1);
-	module.exports = __webpack_require__(259);
+	module.exports = __webpack_require__(260);
 
 
 /***/ }),
@@ -686,6 +686,7 @@
 	    admin.addEntity(nga.entity('PlayerSettings'));
 	    admin.addEntity(nga.entity('Subscriptions'));
 	    admin.addEntity(nga.entity('Users'));
+	    admin.addEntity(nga.entity('userAvailable'));
 	    admin.addEntity(nga.entity('Groups'));
 	    admin.addEntity(nga.entity('Grouprights'));
 	    admin.addEntity(nga.entity('Vods'));
@@ -740,7 +741,7 @@
 	    __webpack_require__(178)(nga, admin);
 	    __webpack_require__(179)(nga, admin);
 	    __webpack_require__(180)(nga, admin);
-	    __webpack_require__(181)(nga, admin);
+	    __webpack_require__(182)(nga, admin);
 	    __webpack_require__(184)(nga, admin);
 	    __webpack_require__(185)(nga, admin);
 	    __webpack_require__(186)(nga, admin);
@@ -807,28 +808,29 @@
 	    __webpack_require__(249)(nga, admin);
 	    __webpack_require__(250)(nga, admin);
 	    __webpack_require__(251)(nga, admin);
+	    __webpack_require__(252)(nga, admin);
 	
 	    // Menu / Header / Dashboard / Layout
 	
 	    if (localStorage.userRole === 'resellers') {
-	        admin.dashboard(__webpack_require__(252)(nga, admin));
+	        admin.dashboard(__webpack_require__(253)(nga, admin));
 	    } else {
-	        admin.dashboard(__webpack_require__(254)(nga, admin));
+	        admin.dashboard(__webpack_require__(255)(nga, admin));
 	    }
 	
-	    admin.header(__webpack_require__(256));
+	    admin.header(__webpack_require__(257));
 	
 	    var menu = localStorage.getItem("menuObject");
 	
 	    if (!menu) {
-	        var menujson = __webpack_require__(257);
+	        var menujson = __webpack_require__(258);
 	    } else {
 	        var obj = JSON.parse(menu);
 	        menujson = obj;
 	    }
 	
 	    // var menujson = require('./menuobject.js');
-	    admin.menu(__webpack_require__(258)(nga, admin, menujson));
+	    admin.menu(__webpack_require__(259)(nga, admin, menujson));
 	
 	    nga.configure(admin);
 	}]);
@@ -20243,7 +20245,7 @@
 	'use strict';
 	
 	Object.defineProperty(exports, '__esModule', {
-	    value: true
+	  value: true
 	});
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -20252,26 +20254,45 @@
 	
 	var _edit_buttonHtml2 = _interopRequireDefault(_edit_buttonHtml);
 	
+	var _templatesModalImageUploadHtml = __webpack_require__(181);
+	
+	var _templatesModalImageUploadHtml2 = _interopRequireDefault(_templatesModalImageUploadHtml);
+	
 	exports['default'] = function (nga, admin) {
-	    var VodMenu = admin.getEntity('vodMenu');
+	  var VodMenu = admin.getEntity('vodMenu');
 	
-	    VodMenu.listView().title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>').batchActions([]).actions(['create']).fields([nga.field('id').label('ID'), nga.field('name', 'string').label('Vod Menu Name'), nga.field('order', 'number').label('Order'), nga.field('pin_protected', 'boolean').label('Pin Protected'), nga.field('isavailable', 'boolean').label('Available')]).listActions(['edit', 'delete']);
+	  VodMenu.listView().title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>').batchActions([]).actions(['create']).fields([nga.field('id').label('ID'), nga.field('name', 'string').label('Vod Menu Name'), nga.field('order', 'number').label('Order'), nga.field('icon_url', 'file').template('<div ng-controller="modalController">\n                         <img ng-src="{{ entry.values.icon_url }}"\n                         width="45"\n                         height="45"\n                         ng-click="openModalImage(entry.values.icon_url)">\n                       </div>').cssClasses('hidden-xs').label('Icon'), nga.field('pin_protected', 'boolean').label('Pin Protected'), nga.field('isavailable', 'boolean').label('Available')]).listActions(['edit', 'delete']);
 	
-	    VodMenu.creationView().title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> Create: {{ entry.values.id }}</h4>').fields([nga.field('name', 'string').attributes({ placeholder: 'Vod Menu Name' }).validation({ required: true }).label('Vod Menu Name'), nga.field('description', 'text').transform(function lineBreaks(value, entry) {
-	        return value.split("\n").join("<br/>");
-	    }).attributes({ placeholder: 'Description' }).validation({ required: true }).label('Description'), nga.field('order', 'number').attributes({ placeholder: 'Order' }).validation({ required: true }).label('Order'), nga.field('pin_protected', 'boolean').attributes({ placeholder: 'Pin Protected' }).validation({ required: true }).label('Pin Protected'), nga.field('isavailable', 'boolean').attributes({ placeholder: 'Is Available' }).validation({ required: true }).label('Is Available'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
+	  VodMenu.creationView().title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> Create: {{ entry.values.id }}</h4>').fields([nga.field('name', 'string').attributes({ placeholder: 'Vod Menu Name' }).validation({ required: true }).label('Vod Menu Name'), nga.field('description', 'text').transform(function lineBreaks(value, entry) {
+	    return value.split("\n").join("<br/>");
+	  }).attributes({ placeholder: 'Description' }).validation({ required: true }).label('Description'), nga.field('order', 'number').attributes({ placeholder: 'Order' }).validation({ required: true }).label('Order'), nga.field('icon_url', 'file').uploadInformation({ 'url': '/file-upload/single-file/vodMenu/icon_url', 'apifilename': 'result' }).template(_templatesModalImageUploadHtml2['default']).validation({
+	    validator: function validator(value) {
+	      var icon_url = document.getElementById('icon_url');
+	      if (icon_url.value.length > 0) {
+	        if (icon_url.files[0].size > 614400) {
+	          throw new Error('Your Icon is too Big, not larger than 600 KB');
+	        }
+	      }
+	    }
+	  }).label('Icon'), nga.field('pin_protected', 'boolean').attributes({ placeholder: 'Pin Protected' }).validation({ required: true }).label('Pin Protected'), nga.field('isavailable', 'boolean').attributes({ placeholder: 'Is Available' }).validation({ required: true }).label('Is Available'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
 	
-	    VodMenu.editionView().actions(['list']).title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.id }}</h4>').fields([VodMenu.creationView().fields(), nga.field('vodMenuCarousel', 'referenced_list').label('VOD Menu Carousel').targetEntity(admin.getEntity('vodMenuCarousel')).targetReferenceField('vod_menu_id').targetFields([nga.field('name').label('Carousel Name'), nga.field('order').label('Order'), nga.field('url').label('Url')]).listActions(['edit', 'delete']), nga.field('Add VOD Menu Carousel', 'template').label('').template('<ma-create-button entity-name="vodMenuCarousel" class="pull-right" label="Add VOD Menu Carousel" default-values="{ vod_menu_id: entry.values.id }"></ma-create-button>')]);
+	  VodMenu.editionView().actions(['list']).title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.id }}</h4>').fields([VodMenu.creationView().fields(), nga.field('vodMenuCarousel', 'referenced_list').label('VOD Menu Carousel').targetEntity(admin.getEntity('vodMenuCarousel')).targetReferenceField('vod_menu_id').targetFields([nga.field('name').label('Carousel Name'), nga.field('order').label('Order'), nga.field('url').label('Url')]).listActions(['edit', 'delete']), nga.field('Add VOD Menu Carousel', 'template').label('').template('<ma-create-button entity-name="vodMenuCarousel" class="pull-right" label="Add VOD Menu Carousel" default-values="{ vod_menu_id: entry.values.id }"></ma-create-button>')]);
 	
-	    VodMenu.deletionView().title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> Remove <span style ="color:red;"> {{ entry.values.id }}').actions(['<ma-back-button entry="entry" entity="entity"></ma-back-button>']);
+	  VodMenu.deletionView().title('<h4>Vod Menu <i class="fa fa-angle-right" aria-hidden="true"></i> Remove <span style ="color:red;"> {{ entry.values.id }}').actions(['<ma-back-button entry="entry" entity="entity"></ma-back-button>']);
 	
-	    return VodMenu;
+	  return VodMenu;
 	};
 	
 	module.exports = exports['default'];
 
 /***/ }),
 /* 181 */
+/***/ (function(module, exports) {
+
+	module.exports = "<div class=\"row\">\r\n    <div class=\"col-xs-12 col-sm-1\">\r\n        <div ng-controller=\"modalController\">\r\n            <img ng-src=\"{{ entry.values.icon_url }}\"\r\n                 width=\"45\"\r\n                 height=\"45\"\r\n                 ng-click=\"openModalImage(entry.values.icon_url)\">\r\n        </div>\r\n    </div>\r\n    <div class=\"col-xs-12 col-sm-8\"><ma-file-field field=\"field\" value=\"entry.values.icon_url\"></ma-file-field></div>\r\n</div>\r\n<div class=\"row\"><small id=\"emailHelp\" class=\"form-text text-muted\">120x120 px, not larger than 200 KB</small></div>";
+
+/***/ }),
+/* 182 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -20286,11 +20307,11 @@
 	
 	var _edit_buttonHtml2 = _interopRequireDefault(_edit_buttonHtml);
 	
-	var _templatesModalTemplateHtml = __webpack_require__(182);
+	var _templatesModalTemplateHtml = __webpack_require__(183);
 	
 	var _templatesModalTemplateHtml2 = _interopRequireDefault(_templatesModalTemplateHtml);
 	
-	var _templatesModalImageUploadHtml = __webpack_require__(183);
+	var _templatesModalImageUploadHtml = __webpack_require__(181);
 	
 	var _templatesModalImageUploadHtml2 = _interopRequireDefault(_templatesModalImageUploadHtml);
 	
@@ -20398,16 +20419,10 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 182 */
-/***/ (function(module, exports) {
-
-	module.exports = "<div ng-controller=\"modalController\">\r\n    <img ng-src=\"{{ entry.values.icon_url }}\"\r\n         width=\"45\"\r\n         height=\"45\"\r\n         ng-click=\"openModalImage(entry.values.icon_url, 'thumbnail')\">\r\n</div>";
-
-/***/ }),
 /* 183 */
 /***/ (function(module, exports) {
 
-	module.exports = "<div class=\"row\">\r\n    <div class=\"col-xs-12 col-sm-1\">\r\n        <div ng-controller=\"modalController\">\r\n            <img ng-src=\"{{ entry.values.icon_url }}\"\r\n                 width=\"45\"\r\n                 height=\"45\"\r\n                 ng-click=\"openModalImage(entry.values.icon_url)\">\r\n        </div>\r\n    </div>\r\n    <div class=\"col-xs-12 col-sm-8\"><ma-file-field field=\"field\" value=\"entry.values.icon_url\"></ma-file-field></div>\r\n</div>\r\n<div class=\"row\"><small id=\"emailHelp\" class=\"form-text text-muted\">120x120 px, not larger than 200 KB</small></div>";
+	module.exports = "<div ng-controller=\"modalController\">\r\n    <img ng-src=\"{{ entry.values.icon_url }}\"\r\n         width=\"45\"\r\n         height=\"45\"\r\n         ng-click=\"openModalImage(entry.values.icon_url, 'thumbnail')\">\r\n</div>";
 
 /***/ }),
 /* 184 */
@@ -20425,11 +20440,11 @@
 	
 	var _edit_buttonHtml2 = _interopRequireDefault(_edit_buttonHtml);
 	
-	var _templatesModalTemplateHtml = __webpack_require__(182);
+	var _templatesModalTemplateHtml = __webpack_require__(183);
 	
 	var _templatesModalTemplateHtml2 = _interopRequireDefault(_templatesModalTemplateHtml);
 	
-	var _templatesModalImageUploadHtml = __webpack_require__(183);
+	var _templatesModalImageUploadHtml = __webpack_require__(181);
 	
 	var _templatesModalImageUploadHtml2 = _interopRequireDefault(_templatesModalImageUploadHtml);
 	
@@ -20692,11 +20707,11 @@
 	
 	var _edit_buttonHtml2 = _interopRequireDefault(_edit_buttonHtml);
 	
-	var _templatesModalTemplateHtml = __webpack_require__(182);
+	var _templatesModalTemplateHtml = __webpack_require__(183);
 	
 	var _templatesModalTemplateHtml2 = _interopRequireDefault(_templatesModalTemplateHtml);
 	
-	var _templatesModalImageUploadHtml = __webpack_require__(183);
+	var _templatesModalImageUploadHtml = __webpack_require__(181);
 	
 	var _templatesModalImageUploadHtml2 = _interopRequireDefault(_templatesModalImageUploadHtml);
 	
@@ -21563,26 +21578,41 @@
 	exports['default'] = function (nga, admin) {
 	    var emailTemplate = admin.getEntity('EmailTemplate');
 	
-	    emailTemplate.listView().title('<h4>Email Template <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>').listActions(['edit', 'delete']).batchActions([]).fields([nga.field('id').label('ID'), nga.field('template_id', 'choice').choices([{ value: 'code-pin-email', label: 'Email Template for Forgot Pin' }, { value: 'new-account', label: 'Email Template for New Account' }, { value: 'new-email', label: 'Email Template for New Email' }, { value: 'reset-password-email', label: 'Email Template for Reset Password' }, { value: 'weather-widget', label: 'Weather Widget' }, { value: 'invoice-info', label: 'Invoice Information' }, { value: 'user-invite-email', label: 'User Invite Email' }
-	    // { value: 'reset-password-confirm-email', label: '' },
+	    emailTemplate.listView().title('<h4>Email Template <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>').listActions(['edit', 'delete']).batchActions([]).fields([nga.field('id').label('Template ID'), //this label is template id not only id for UI purpose
+	    nga.field('template_id', 'choice').choices([{ value: 'code-pin-email', label: 'Email Template for Forgot Pin' }, { value: 'new-account', label: 'Email Template for New Account' }, { value: 'new-email', label: 'Email Template for New Email' }, { value: 'reset-password-email', label: 'Email Template for Reset Password' }, { value: 'weather-widget', label: 'Weather Widget' }, { value: 'invoice-info', label: 'Invoice Information' }, { value: 'user-invite-email', label: 'User Invite Email' }, { value: 'reset-password-email-device', label: 'Device Reset Password Email' }
 	    // { value: 'reset-password-email', label: '' },
 	    // { value: 'reset-password-enter-password', label: '' },
 	    // { value: 'salesreport-invoice', label: '' },
-	    ]).label('Template ID'), nga.field('title', 'string').label('Title'), nga.field('language', 'string').label('Language'), nga.field('content', 'text').label('Content')]);
+	    ]).label('Description'), //this label is Description not template id for UI purpose
+	    nga.field('title', 'string').label('Title'), nga.field('language', 'string').label('Language')]);
 	
-	    emailTemplate.creationView().title('<h4>Email Template <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Template</h4>').fields([nga.field('template_id', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'code-pin-email', label: 'Email Template for Forgot Pin' }, { value: 'new-account', label: 'Email Template for New Account' }, { value: 'new-email', label: 'Email Template for New Email' }, { value: 'reset-password-email', label: 'Email Template for Reset Password' }, { value: 'weather-widget', label: 'Weather Widget' }, { value: 'invoice-info', label: 'Invoice Information' }, { value: 'user-invite-email', label: 'User Invite Email' }
+	    emailTemplate.creationView().title('<h4>Email Template <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Template</h4>').fields([nga.field('template_id', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'code-pin-email', label: 'Email Template for Forgot Pin' }, { value: 'new-account', label: 'Email Template for New Account' }, { value: 'new-email', label: 'Email Template for New Email' }, { value: 'reset-password-email', label: 'Email Template for Reset Password' }, { value: 'weather-widget', label: 'Weather Widget' }, { value: 'invoice-info', label: 'Invoice Information' }, { value: 'user-invite-email', label: 'User Invite Email' }, { value: 'reset-password-email-device', label: 'Device Reset Password Email' }
 	    // { value: 'reset-password-confirm-email', label: '' },
 	    // { value: 'reset-password-email', label: '' },
 	    // { value: 'reset-password-enter-password', label: '' },
 	    // { value: 'salesreport-invoice', label: '' },
-	    ]).validation({ required: true }).label('Template ID'), nga.field('title', 'string').attributes({ placeholder: 'Title' }).validation({ required: true }).label('Title'), nga.field('language', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'eng', label: 'English' }, { value: 'fre', label: 'French' }, { value: 'spa', label: 'Spanish' }, { value: 'sqi', label: 'Albanian' }, { value: 'pt', label: 'Portuguese' }]).validation({ required: true }).label('Language'), nga.field('content', 'text').attributes({ placeholder: 'Content' }).validation({ required: true }).label('Content'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
+	    ]).validation({ required: true }).label('Description'), //this label is Description not template id for UI purpose
+	    nga.field('title', 'string').attributes({ placeholder: 'Title' }).validation({ required: true }).label('Title'), nga.field('language', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'eng', label: 'English' }, { value: 'fre', label: 'French' }, { value: 'spa', label: 'Spanish' }, { value: 'sqi', label: 'Albanian' }, { value: 'pt', label: 'Portuguese' }]).validation({ required: true }).label('Language'), nga.field('content', 'text').attributes({ placeholder: 'Content' }).validation({ required: true }).label('Content'),
 	
-	    emailTemplate.editionView().actions(['list']).title('<h4>Email Template <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.id }}</h4>').fields([nga.field('template_id', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'code-pin-email', label: 'Email Template for Forgot Pin' }, { value: 'new-account', label: 'Email Template for New Account' }, { value: 'new-email', label: 'Email Template for New Email' }, { value: 'reset-password-email', label: 'Email Template for Reset Password' }, { value: 'weather-widget', label: 'Weather Widget' }, { value: 'invoice-info', label: 'Invoice Information' }, { value: 'user-invite-email', label: 'User Invite Email' }
+	    //used only for information purpose , no effect on backend
+	    nga.field('template_info').label('').template('<div  ng-if="entry.values.template_id === \'code-pin-email\'">' + '<p><span>&#123;&#123;</span><span>result.firstname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname</span></p>' + '<p><span>&#123;&#123;</span><span>result.lastname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>req.thisuser.pin</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Pin</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'new-account\'">' + '<p><span>&#123;&#123;</span><span>name</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname and Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>appName</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Company Name</span></p>' + '<p><span>&#123;&#123;</span><span>Url</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Confirmation Url</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'new-email\'">' + '<p><span>&#123;&#123;</span><span>customer_data.firstname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname</span></p>' + '<p><span>&#123;&#123;</span><span>customer_data.lastname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>req.body.email</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = New Email</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'reset-password-email\'">' + '<p><span>&#123;&#123;</span><span>name</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname and Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>username</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Username</span></p>' + '<p><span>&#123;&#123;</span><span>appName</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Company Name</span></p>' + '<p><span>&#123;&#123;</span><span>password</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Password</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'reset-password-email-device\'">' + '<p><span>&#123;&#123;</span><span>name</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Full Name</span></p>' + '<p><span>&#123;&#123;</span><span>username</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Username</span></p>' + '<p><span>&#123;&#123;</span><span>appName</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Company Name</span></p>' + '<p><span>&#123;&#123;</span><span>link</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Password Reset Link</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'user-invite-email\'">' + '<p><span>&#123;&#123;</span><span>link</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Confirmation Link</span></p>' + '</div>'),
+	    //./used only for information purpose , no effect on backend
+	
+	    nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
+	
+	    emailTemplate.editionView().actions(['list']).title('<h4>Email Template <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.id }}</h4>').fields([nga.field('template_id', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'code-pin-email', label: 'Email Template for Forgot Pin' }, { value: 'new-account', label: 'Email Template for New Account' }, { value: 'new-email', label: 'Email Template for New Email' }, { value: 'reset-password-email', label: 'Email Template for Reset Password' }, { value: 'weather-widget', label: 'Weather Widget' }, { value: 'invoice-info', label: 'Invoice Information' }, { value: 'user-invite-email', label: 'User Invite Email' }, { value: 'reset-password-email-device', label: 'Device Reset Password Email' }
 	    // { value: 'reset-password-confirm-email', label: '' },
 	    // { value: 'reset-password-email', label: '' },
 	    // { value: 'reset-password-enter-password', label: '' },
 	    // { value: 'salesreport-invoice', label: '' },
-	    ]).validation({ required: true }).label('Template ID'), nga.field('title', 'string').attributes({ placeholder: 'Title' }).validation({ required: true }).label('Title'), nga.field('language', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'eng', label: 'English' }, { value: 'fre', label: 'French' }, { value: 'spa', label: 'Spanish' }, { value: 'sqi', label: 'Albanian' }, { value: 'pt', label: 'Portuguese' }]).validation({ required: true }).label('Language'), nga.field('content', 'text').attributes({ placeholder: 'Content' }).validation({ required: true }).label('Content'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
+	    ]).validation({ required: true }).label('Description'), //this label is Description not template id for UI purpose
+	    nga.field('title', 'string').attributes({ placeholder: 'Title' }).validation({ required: true }).label('Title'), nga.field('language', 'choice').attributes({ placeholder: 'Choose from dropdown list' }).choices([{ value: 'eng', label: 'English' }, { value: 'fre', label: 'French' }, { value: 'spa', label: 'Spanish' }, { value: 'sqi', label: 'Albanian' }, { value: 'pt', label: 'Portuguese' }]).validation({ required: true }).label('Language'), nga.field('content', 'text').attributes({ placeholder: 'Content' }).validation({ required: true }).label('Content'),
+	
+	    //used only for information purpose , no effect on backend
+	    nga.field('template_info').label('').template('<div  ng-if="entry.values.template_id === \'code-pin-email\'">' + '<p><span>&#123;&#123;</span><span>result.firstname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname</span></p>' + '<p><span>&#123;&#123;</span><span>result.lastname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>req.thisuser.pin</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Pin</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'new-account\'">' + '<p><span>&#123;&#123;</span><span>name</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname and Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>appName</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Company Name</span></p>' + '<p><span>&#123;&#123;</span><span>Url</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Confirmation Url</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'new-email\'">' + '<p><span>&#123;&#123;</span><span>customer_data.firstname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname</span></p>' + '<p><span>&#123;&#123;</span><span>customer_data.lastname</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>req.body.email</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = New Email</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'reset-password-email\'">' + '<p><span>&#123;&#123;</span><span>name</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Firstname and Lastname</span></p>' + '<p><span>&#123;&#123;</span><span>username</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Username</span></p>' + '<p><span>&#123;&#123;</span><span>appName</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Company Name</span></p>' + '<p><span>&#123;&#123;</span><span>password</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Password</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'reset-password-email-device\'">' + '<p><span>&#123;&#123;</span><span>name</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Full Name</span></p>' + '<p><span>&#123;&#123;</span><span>username</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Username</span></p>' + '<p><span>&#123;&#123;</span><span>appName</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Company Name</span></p>' + '<p><span>&#123;&#123;</span><span>link</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Password Reset Link</span></p>' + '</div>' + '<div  ng-if="entry.values.template_id === \'user-invite-email\'">' + '<p><span>&#123;&#123;</span><span>link</span><span>&#125;&#125;</span><span style="font-weight: bold;"> = Confirmation Link</span></p>' + '</div>'),
+	    //./used only for information purpose , no effect on backend
+	
+	    nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
 	
 	    emailTemplate.deletionView().title('<h4>Email Template <i class="fa fa-angle-right" aria-hidden="true"></i> Remove <span style ="color:red;"> {{ entry.values.id }}').actions(['<ma-back-button entry="entry" entity="entity"></ma-back-button>']);
 	
@@ -21686,7 +21716,7 @@
 	
 	var _edit_buttonHtml2 = _interopRequireDefault(_edit_buttonHtml);
 	
-	var _templatesModalTemplateHtml = __webpack_require__(182);
+	var _templatesModalTemplateHtml = __webpack_require__(183);
 	
 	var _templatesModalTemplateHtml2 = _interopRequireDefault(_templatesModalTemplateHtml);
 	
@@ -21900,7 +21930,7 @@
 	    //hidden from UI
 	    nga.field('is_octoshape', 'boolean').defaultValue(false).validation({ required: false }).cssClasses('hidden').label('')]);
 	
-	    channelstream.editionView().title('<h4>Channel Streams <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.channel_id }}</h4>').actions(['list', 'delete']).fields([channelstream.creationView().fields()]);
+	    channelstream.editionView().title('<h4>Channel Streams <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.channel_id }}</h4>').actions(['delete']).fields([channelstream.creationView().fields()]);
 	
 	    return channelstream;
 	};
@@ -22102,7 +22132,7 @@
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 	
-	var _templatesModalTemplateHtml = __webpack_require__(182);
+	var _templatesModalTemplateHtml = __webpack_require__(183);
 	
 	var _templatesModalTemplateHtml2 = _interopRequireDefault(_templatesModalTemplateHtml);
 	
@@ -22254,7 +22284,7 @@
 			return value.length > 14 ? value.substr(0, 14) + '...' : value;
 		}).template(function (entry) {
 			return '<a target="_blank" href="https://tools.keycdn.com/geo?host=' + entry.values.device_ip + '">{{entry.values.device_ip}}</a>';
-		}).label('IP'), nga.field('device_mac_address', 'string').label('Ethernet'), nga.field('device_wifimac_address', 'string').label('WiFi'), nga.field('ntype').map(function app(value) {
+		}).label('IP'), nga.field('city', 'string').label('City'), nga.field('device_mac_address', 'string').label('Ethernet'), nga.field('device_wifimac_address', 'string').label('WiFi'), nga.field('ntype').map(function app(value) {
 			if (value == 1) {
 				return 'Wifi';
 			} else if (value == 2) {
@@ -22273,15 +22303,17 @@
 				return 'Stv';
 			} else if (value === 5) {
 				return 'Samsung';
+			} else if (value === 6) {
+				return 'Apple TV';
 			}
 		}).label('App'), nga.field('app_version').label('App Version'), nga.field('screen_resolution').label('Screen Resolution'), nga.field('hdmi').label('HDMI'), nga.field('device_brand').map(function truncate(value) {
 			if (!value) {
 				return '';
 			}
 			return value.length > 14 ? value.substr(0, 14) + '...' : value;
-		}).label('Device Brand'), nga.field('device_active', 'boolean').label('Device Active'), nga.field('api_version', 'string').label('Api Version')]).filters([nga.field('q').label('').template('<div class="input-group"><input type="text" ng-model="value" placeholder="Search" class="form-control"><span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span></div>').pinned(true), nga.field('appid', 'choice').choices([{ value: 1, label: 'Box' }, { value: 2, label: 'Android' }, { value: 3, label: 'Ios' }, { value: 4, label: 'Stv' }, { value: 5, label: 'Samsung' }]).attributes({ placeholder: 'App Id' }).label('App ID'), nga.field('app_version').attributes({ placeholder: 'App Version' }).label('App Version'), nga.field('api_version').attributes({ placeholder: 'Api Version' }).label('Api Version'), nga.field('ntype', 'choice').choices([{ value: 1, label: 'Wifi' }, { value: 2, label: 'Ethernet' }, { value: 3, label: 'GPRS' }]).attributes({ placeholder: 'Ntype' }).label('Ntype'), nga.field('device_active', 'boolean').filterChoices([{ value: true, label: 'Active' }, { value: false, label: 'Not Active' }]).label('Device Active'), nga.field('hdmi').attributes({ placeholder: 'HDMI' }).label('HDMI'), nga.field('username').attributes({ placeholder: 'Username' }).label('Username')]).sortField('appid').sortDir('ASC').listActions(['edit']).exportFields([devices.listView().fields()]);
+		}).label('Device Brand'), nga.field('device_active', 'boolean').label('Device Active'), nga.field('api_version', 'string').label('Api Version')]).filters([nga.field('q').label('').template('<div class="input-group"><input type="text" ng-model="value" placeholder="Search" class="form-control"><span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span></div>').pinned(true), nga.field('appid', 'choice').choices([{ value: 1, label: 'Box' }, { value: 2, label: 'Android' }, { value: 3, label: 'Ios' }, { value: 4, label: 'Stv' }, { value: 5, label: 'Samsung' }, { value: 6, label: 'Apple TV' }]).attributes({ placeholder: 'App Id' }).label('App ID'), nga.field('app_version').attributes({ placeholder: 'App Version' }).label('App Version'), nga.field('api_version').attributes({ placeholder: 'Api Version' }).label('Api Version'), nga.field('ntype', 'choice').choices([{ value: 1, label: 'Wifi' }, { value: 2, label: 'Ethernet' }, { value: 3, label: 'GPRS' }]).attributes({ placeholder: 'Ntype' }).label('Ntype'), nga.field('device_active', 'boolean').filterChoices([{ value: true, label: 'Active' }, { value: false, label: 'Not Active' }]).label('Device Active'), nga.field('hdmi').attributes({ placeholder: 'HDMI' }).label('HDMI'), nga.field('username').attributes({ placeholder: 'Username' }).label('Username')]).sortField('appid').sortDir('ASC').listActions(['edit']).exportFields([devices.listView().fields()]);
 	
-		devices.creationView().title('<h4>Devices <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Device</h4>').fields([nga.field('username').attributes({ placeholder: 'Username' }).validation({ required: true }).editable(false).label('Username'), nga.field('googleappid', 'string').editable(false).attributes({ placeholder: 'Google App Id' }).label('Google App ID'), nga.field('device_active', 'boolean').validation({ required: true }).label('Device Active'), nga.field('device_mac_address', 'string').attributes({ placeholder: 'Device Mac Address' }).validation({ required: true }).editable(false).label('Device Mac Address'), nga.field('device_wifimac_address', 'string').attributes({ placeholder: 'Device Wifi Mac Address' }).validation({ required: true }).editable(false).label('Device Wifi Mac Address'), nga.field('device_ip', 'string').attributes({ placeholder: 'Device IP' }).validation({ required: true }).editable(false).label('Device IP'), nga.field('device_id', 'string').attributes({ placeholder: 'Device ID' }).validation({ required: true }).editable(false).label('Device ID'), nga.field('ntype', 'string').attributes({ placeholder: 'Ntype' }).validation({ required: true }).editable(false).label('Ntype'), nga.field('appid', 'string').attributes({ placeholder: 'App ID' }).validation({ required: true }).editable(false).label('App ID'), nga.field('api_version', 'string').attributes({ placeholder: 'Api Version' }).validation({ required: true }).editable(false).label('Api Version'), nga.field('firmware', 'string').editable(false).label('Firmware'), nga.field('os').editable(false).label('Os'), nga.field('screen_resolution').editable(false).label('Screen Resolution'), nga.field('hdmi').editable(false).label('HDMI'), nga.field('device_brand').editable(false).label('Device Brand'), nga.field('app_version', 'string').editable(false).validation({ required: true }).label('App Version'), nga.field('createdAt', 'datetime').editable(false).label('First Login'), nga.field('updatedAt', 'datetime').editable(false).label('Last Login'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
+		devices.creationView().title('<h4>Devices <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Device</h4>').fields([nga.field('username').attributes({ placeholder: 'Username' }).validation({ required: true }).editable(false).label('Username'), nga.field('googleappid', 'string').editable(false).attributes({ placeholder: 'Google App Id' }).label('Google App ID'), nga.field('device_active', 'boolean').validation({ required: true }).label('Device Active'), nga.field('device_mac_address', 'string').attributes({ placeholder: 'Device Mac Address' }).validation({ required: true }).editable(false).label('Device Mac Address'), nga.field('device_wifimac_address', 'string').attributes({ placeholder: 'Device Wifi Mac Address' }).validation({ required: true }).editable(false).label('Device Wifi Mac Address'), nga.field('device_ip', 'string').attributes({ placeholder: 'Device IP' }).validation({ required: true }).editable(false).label('Device IP'), nga.field('city', 'string').attributes({ placeholder: 'City' }).validation({ required: true }).editable(false).label('City'), nga.field('device_id', 'string').attributes({ placeholder: 'Device ID' }).validation({ required: true }).editable(false).label('Device ID'), nga.field('ntype', 'string').attributes({ placeholder: 'Ntype' }).validation({ required: true }).editable(false).label('Ntype'), nga.field('appid', 'string').attributes({ placeholder: 'App ID' }).validation({ required: true }).editable(false).label('App ID'), nga.field('api_version', 'string').attributes({ placeholder: 'Api Version' }).validation({ required: true }).editable(false).label('Api Version'), nga.field('firmware', 'string').editable(false).label('Firmware'), nga.field('os').editable(false).label('Os'), nga.field('screen_resolution').editable(false).label('Screen Resolution'), nga.field('hdmi').editable(false).label('HDMI'), nga.field('device_brand').editable(false).label('Device Brand'), nga.field('app_version', 'string').editable(false).validation({ required: true }).label('App Version'), nga.field('createdAt', 'datetime').editable(false).label('First Login'), nga.field('updatedAt', 'datetime').editable(false).label('Last Login'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
 	
 		devices.editionView().title('<h4>Devices <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.username }}</h4>').actions(['list']).fields([devices.creationView().fields()]);
 	
@@ -22401,7 +22433,7 @@
 	'use strict';
 	
 	Object.defineProperty(exports, '__esModule', {
-	    value: true
+	  value: true
 	});
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
@@ -22414,44 +22446,44 @@
 	
 	var _filter_genre_btnHtml2 = _interopRequireDefault(_filter_genre_btnHtml);
 	
-	var _templatesModalTemplateHtml = __webpack_require__(182);
+	var _templatesModalTemplateHtml = __webpack_require__(183);
 	
 	var _templatesModalTemplateHtml2 = _interopRequireDefault(_templatesModalTemplateHtml);
 	
-	var _templatesModalImageUploadHtml = __webpack_require__(183);
+	var _templatesModalImageUploadHtml = __webpack_require__(181);
 	
 	var _templatesModalImageUploadHtml2 = _interopRequireDefault(_templatesModalImageUploadHtml);
 	
 	exports['default'] = function (nga, admin) {
-	    var genre = admin.getEntity('Genres');
-	    genre.listView().title('<h4>Genres <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>').batchActions([]).fields([nga.field('id', 'string').isDetailLink(true).label('ID'), nga.field('description', 'string').label('Description'), nga.field('icon_url', 'file').template(_templatesModalTemplateHtml2['default']).cssClasses('hidden-xs').label('Icon'), nga.field('is_available', 'boolean').label('Available'), nga.field('channels').map(function total(value, entry) {
-	        var obj = [];
-	        for (var i = value.length - 1; i >= 0; i--) {
-	            obj[i] = value[i].total;
-	            return obj[i];
+	  var genre = admin.getEntity('Genres');
+	  genre.listView().title('<h4>Genres <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>').batchActions([]).fields([nga.field('id', 'string').isDetailLink(true).label('ID'), nga.field('description', 'string').label('Description'), nga.field('icon_url', 'file').template(_templatesModalTemplateHtml2['default']).cssClasses('hidden-xs').label('Icon'), nga.field('is_available', 'boolean').label('Available'), nga.field('pin_protected', 'boolean').label('Pin Protected'), nga.field('channels').map(function total(value, entry) {
+	    var obj = [];
+	    for (var i = value.length - 1; i >= 0; i--) {
+	      obj[i] = value[i].total;
+	      return obj[i];
+	    }
+	  }).label('Number of Channels'), nga.field('order', 'number').label('Order')]).listActions(['edit', 'delete']).exportFields([genre.listView().fields()]);
+	
+	  genre.deletionView().title('<h4>Genre <i class="fa fa-angle-right" aria-hidden="true"></i> Remove <span style ="color:red;"> {{ entry.values.description }} </span></h4>').actions(['<ma-back-button entry="entry" entity="entity"></ma-back-button>']);
+	
+	  genre.creationView().title('<h4>Genres <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Genre</h4>').fields([nga.field('description', 'string').attributes({ placeholder: 'Name of the channel genre/category' }).validation({ required: true }).label('Description'), nga.field('order', 'number').attributes({ placeholder: 'Sorting' }).validation({ required: true }).label('Sorting'), nga.field('is_available', 'boolean').attributes({ placeholder: 'Is Available' }).validation({ required: true }).label('Is Available'), nga.field('pin_protected', 'boolean').attributes({ placeholder: 'Pin Protected' }).validation({ required: true }).label('Pin Protected'), nga.field('icon_url', 'file').uploadInformation({ 'url': '/file-upload/single-file/genre/icon_url', 'apifilename': 'result' }).template(_templatesModalImageUploadHtml2['default']).validation({
+	    validator: function validator(value) {
+	      if (value == null) {
+	        throw new Error('Please, choose icon');
+	      } else {
+	        var icon_url = document.getElementById('icon_url');
+	        if (icon_url.value.length > 0) {
+	          if (icon_url.files[0].size > 204800) {
+	            throw new Error('Your Icon is too Big, not larger than 200 KB');
+	          }
 	        }
-	    }).label('Number of Channels')]).listActions(['edit', 'delete']).exportFields([genre.listView().fields()]);
+	      }
+	    }
+	  }).label('Icon *'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
 	
-	    genre.deletionView().title('<h4>Genre <i class="fa fa-angle-right" aria-hidden="true"></i> Remove <span style ="color:red;"> {{ entry.values.description }} </span></h4>').actions(['<ma-back-button entry="entry" entity="entity"></ma-back-button>']);
+	  genre.editionView().title('<h4>Genres <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.description }}</h4>').actions(['list']).fields([genre.creationView().fields(), nga.field('', 'referenced_list').label('Channel').targetEntity(admin.getEntity('Channels')).targetReferenceField('genre_id').targetFields([nga.field('channel_number').label('Nr'), nga.field('icon_url', 'file').template(_templatesModalTemplateHtml2['default']).label('Icon'), nga.field('title', 'string').attributes({ placeholder: 'Title' }).validation({ required: true }).label('Title')]).listActions(['edit']), nga.field('template').label('').template(_filter_genre_btnHtml2['default'])]);
 	
-	    genre.creationView().title('<h4>Genres <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Genre</h4>').fields([nga.field('description', 'string').attributes({ placeholder: 'Name of the channel genre/category' }).validation({ required: true }).label('Description'), nga.field('is_available', 'boolean').attributes({ placeholder: 'Is Available' }).validation({ required: true }).label('Is Available'), nga.field('icon_url', 'file').uploadInformation({ 'url': '/file-upload/single-file/genre/icon_url', 'apifilename': 'result' }).template(_templatesModalImageUploadHtml2['default']).validation({
-	        validator: function validator(value) {
-	            if (value == null) {
-	                throw new Error('Please, choose icon');
-	            } else {
-	                var icon_url = document.getElementById('icon_url');
-	                if (icon_url.value.length > 0) {
-	                    if (icon_url.files[0].size > 204800) {
-	                        throw new Error('Your Icon is too Big, not larger than 200 KB');
-	                    }
-	                }
-	            }
-	        }
-	    }).label('Icon *'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
-	
-	    genre.editionView().title('<h4>Genres <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.description }}</h4>').actions(['list']).fields([genre.creationView().fields(), nga.field('', 'referenced_list').label('Channel').targetEntity(admin.getEntity('Channels')).targetReferenceField('genre_id').targetFields([nga.field('channel_number').label('Nr'), nga.field('icon_url', 'file').template(_templatesModalTemplateHtml2['default']).label('Icon'), nga.field('title', 'string').attributes({ placeholder: 'Title' }).validation({ required: true }).label('Title')]).listActions(['edit']), nga.field('template').label('').template(_filter_genre_btnHtml2['default'])]);
-	
-	    return genre;
+	  return genre;
 	};
 	
 	module.exports = exports['default'];
@@ -22667,8 +22699,10 @@
 	            return 'Stv';
 	        } else if (value === 5) {
 	            return 'Samsung';
+	        } else if (value === 6) {
+	            return 'Apple TV';
 	        }
-	    }).cssClasses('hidden-xs').label('App ID'), nga.field('app_version').cssClasses('hidden-xs').label('App Version'), nga.field('ntype').cssClasses('hidden-xs').label('Ntype'), nga.field('updatedAt', 'date').cssClasses('hidden-xs').label('Last Updated'), nga.field('device_brand').cssClasses('hidden-xs').label('Device Brand'), nga.field('device_active', 'boolean').label('Device Active')]).sortField('appid').sortDir('ASC').listActions(['edit']), nga.field('Salesreports', 'referenced_list').label('Sale Reports').targetEntity(nga.entity('Salesreports')).targetReferenceField('login_data_id').targetFields([nga.field('user_id', 'reference').targetEntity(admin.getEntity('Users')).targetField(nga.field('username')).isDetailLink(false).cssClasses('hidden-xs').label('User'), nga.field('on_behalf_id', 'reference').targetEntity(admin.getEntity('Users')).targetField(nga.field('username')).isDetailLink(false).cssClasses('hidden-xs').label('On Behalf of'), nga.field('saledate', 'date').cssClasses('hidden-xs').label('Sale Date'), nga.field('combo_id', 'reference').targetEntity(admin.getEntity('Combos')).targetField(nga.field('name')).isDetailLink(false).label('Product')]).listActions(['<ma-edit-button entry="entry" entity="entity" label="Cancel Subscription" size="xs"></ma-edit-button>']), nga.field('custom_action').label('').template('<show-invoice post="entry" class="pull-right"></show-invoice>')]);
+	    }).cssClasses('hidden-xs').label('App ID'), nga.field('app_version').cssClasses('hidden-xs').label('App Version'), nga.field('ntype').cssClasses('hidden-xs').label('Ntype'), nga.field('updatedAt', 'date').cssClasses('hidden-xs').label('Last Updated'), nga.field('device_brand').cssClasses('hidden-xs').label('Device Brand'), nga.field('device_active', 'boolean').label('Device Active')]).perPage(100).sortField('updatedAt').sortDir('DESC').listActions(['edit']), nga.field('Salesreports', 'referenced_list').label('Sale Reports').targetEntity(nga.entity('Salesreports')).targetReferenceField('login_data_id').targetFields([nga.field('user_id', 'reference').targetEntity(admin.getEntity('Users')).targetField(nga.field('username')).isDetailLink(false).cssClasses('hidden-xs').label('User'), nga.field('on_behalf_id', 'reference').targetEntity(admin.getEntity('Users')).targetField(nga.field('username')).isDetailLink(false).cssClasses('hidden-xs').label('On Behalf of'), nga.field('saledate', 'date').cssClasses('hidden-xs').label('Sale Date'), nga.field('combo_id', 'reference').targetEntity(admin.getEntity('Combos')).targetField(nga.field('name')).isDetailLink(false).label('Product')]).listActions(['<ma-edit-button entry="entry" entity="entity" label="Cancel Subscription" size="xs"></ma-edit-button>']), nga.field('custom_action').label('').template('<show-invoice post="entry" class="pull-right"></show-invoice>')]);
 	
 	    return CustomerAccount;
 	};
@@ -23181,7 +23215,7 @@
 					throw new Error('Please Select Combo');
 				}
 			}
-		}).perPage(-1).label('Combo *'), nga.field('on_behalf_id', 'reference').targetEntity(admin.getEntity('Users')).targetField(nga.field('username')).remoteComplete(true, {
+		}).perPage(-1).label('Combo *'), nga.field('on_behalf_id', 'reference').targetEntity(admin.getEntity('userAvailable')).targetField(nga.field('username')).remoteComplete(true, {
 			refreshDelay: 300,
 			// populate choices from the response of GET /posts?q=XXX
 			searchQuery: function searchQuery(search) {
@@ -23271,6 +23305,33 @@
 	'use strict';
 	
 	Object.defineProperty(exports, '__esModule', {
+	    value: true
+	});
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+	
+	var _edit_buttonHtml = __webpack_require__(170);
+	
+	var _edit_buttonHtml2 = _interopRequireDefault(_edit_buttonHtml);
+	
+	exports['default'] = function (nga, admin) {
+	    var users = admin.getEntity('userAvailable');
+	    users.listView().title('<h4>Users <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>').batchActions([]).actions(['<roles post="entry"></roles>', 'filter', 'export', '<invite type="invite_users" selection="selection"></invite>']).fields([nga.field('username', 'string').label('Username')]).listActions(['edit', '<approve-invitation size="xs" review="entry"></approve-invitation>']).exportFields([users.listView().fields()]);
+	
+	    users.creationView().title('<h4>Users <i class="fa fa-angle-right" aria-hidden="true"></i> Create: User </h4>').fields([nga.field('username', 'string').attributes({ placeholder: 'Username must be at least 3 character long' }).validation({ required: true, minlength: 3 }).label('Username')]);
+	
+	    return users;
+	};
+	
+	module.exports = exports['default'];
+
+/***/ }),
+/* 237 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, '__esModule', {
 	  value: true
 	});
 	
@@ -23300,7 +23361,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 237 */
+/* 238 */
 /***/ (function(module, exports) {
 
 	'use strict';
@@ -23319,7 +23380,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 238 */
+/* 239 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23360,7 +23421,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 239 */
+/* 240 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23411,7 +23472,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 240 */
+/* 241 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23461,7 +23522,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 241 */
+/* 242 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23500,7 +23561,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 242 */
+/* 243 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23529,7 +23590,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 243 */
+/* 244 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23558,7 +23619,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 244 */
+/* 245 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23609,7 +23670,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 245 */
+/* 246 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23775,7 +23836,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 246 */
+/* 247 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23790,11 +23851,11 @@
 	
 	var _edit_buttonHtml2 = _interopRequireDefault(_edit_buttonHtml);
 	
-	var _templatesModalTemplateHtml = __webpack_require__(182);
+	var _templatesModalTemplateHtml = __webpack_require__(183);
 	
 	var _templatesModalTemplateHtml2 = _interopRequireDefault(_templatesModalTemplateHtml);
 	
-	var _templatesModalImageUploadHtml = __webpack_require__(183);
+	var _templatesModalImageUploadHtml = __webpack_require__(181);
 	
 	var _templatesModalImageUploadHtml2 = _interopRequireDefault(_templatesModalImageUploadHtml);
 	
@@ -23840,7 +23901,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 247 */
+/* 248 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23941,7 +24002,7 @@
 	        }
 	    }).label('DRM Platform *'), nga.field('template').label('').template(_edit_buttonHtml2['default'])]);
 	
-	    vodstream.editionView().title('<h4>Vod Streams <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.vod_id }}</h4>').actions(['list', 'delete']).fields([vodstream.creationView().fields()]);
+	    vodstream.editionView().title('<h4>Vod Streams <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.vod_id }}</h4>').actions(['delete']).fields([vodstream.creationView().fields()]);
 	
 	    return vodstream;
 	};
@@ -23949,7 +24010,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 248 */
+/* 249 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -23978,7 +24039,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 249 */
+/* 250 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -24019,7 +24080,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 250 */
+/* 251 */
 /***/ (function(module, exports) {
 
 	'use strict';
@@ -24041,7 +24102,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 251 */
+/* 252 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -24068,7 +24129,7 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 252 */
+/* 253 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -24079,7 +24140,7 @@
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 	
-	var _resellers_dashboardHtml = __webpack_require__(253);
+	var _resellers_dashboardHtml = __webpack_require__(254);
 	
 	var _resellers_dashboardHtml2 = _interopRequireDefault(_resellers_dashboardHtml);
 	
@@ -24104,13 +24165,13 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 253 */
+/* 254 */
 /***/ (function(module, exports) {
 
 	module.exports = "<div class=\"row dashboard-starter\"></div>\r\n<resellersdashboard-summary></resellersdashboard-summary>\r\n\r\n<graph>\r\n    <vis-timeline data=\"data\" options=\"options\"></vis-timeline>\r\n</graph>\r\n\r\n<div class=\"row dashboard-content\">\r\n\r\n    <div class=\"col-lg-12\">\r\n        <div class=\"panel panel-default theme\">\r\n            <ma-dashboard-panel collection=\"dashboardController.collections.sales_report\" entries=\"dashboardController.entries.sales_report\" datastore=\"dashboardController.datastore\"></ma-dashboard-panel>\r\n        </div>\r\n    </div>\r\n\r\n\r\n    <div class=\"container-fluid\">\r\n        <!--div class=\"col-xs-2 idiqagentstatus-buttonHolders pull-right\">\r\n        <button type=\"button\" class=\"btn btn-xs\" ng-click=\"agentClicked()\">Show hidden Node and change color</button>\r\n      </div-->\r\n        <vis-timeline data=\"data\" options=\"options\"></vis-timeline>\r\n    </div>\r\n\r\n</div>";
 
 /***/ }),
-/* 254 */
+/* 255 */
 /***/ (function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -24125,7 +24186,7 @@
 	
 	var _moment2 = _interopRequireDefault(_moment);
 	
-	var _dashboardHtml = __webpack_require__(255);
+	var _dashboardHtml = __webpack_require__(256);
 	
 	var _dashboardHtml2 = _interopRequireDefault(_dashboardHtml);
 	
@@ -24142,19 +24203,19 @@
 	module.exports = exports['default'];
 
 /***/ }),
-/* 255 */
+/* 256 */
 /***/ (function(module, exports) {
 
 	module.exports = "<div class=\"row dashboard-starter\"></div>\r\n<dashboard-summary></dashboard-summary>\r\n\r\n<graph>\r\n  <vis-graph2d class=\"custom-graph-style\" data=\"data\" options=\"options\"></vis-graph2d>\r\n</graph>\r\n\r\n<div class=\"row dashboard-content\">\r\n  <div class=\"container-fluid\">\r\n    <div ng-controller=\"expireGraphCtr\">\r\n      <div class=\"row\">\r\n        <div class=\"col-sm-12 col-md-6\">\r\n          <h4>Expirations By Month</h4>\r\n          <vis-graph2d data=\"data\" options=\"options\"></vis-graph2d>\r\n        </div>\r\n        <div class=\"col-sm-6\">\r\n          <h4>All time Expirations</h4>\r\n          <vis-graph2d class=\"group0Style\" data=\"data2\" options=\"options2\"></vis-graph2d>\r\n        </div>\r\n        <div class=\"col-sm-12 col-md-12\">\r\n          <h4 style=\"margin-top: 25px;\">Sales Last 24 months</h4>\r\n          <vis-graph2d class=\"group0Style\" data=\"data3\" options=\"options3\"></vis-graph2d>\r\n        </div>\r\n      </div>\r\n    </div>\r\n    <div class=\"panel panel-default theme\">\r\n      <ma-dashboard-panel\r\n        collection=\"dashboardController.collections.login_accounts\"\r\n        entries=\"dashboardController.entries.login_accounts\"\r\n        datastore=\"dashboardController.datastore\"\r\n      ></ma-dashboard-panel>\r\n    </div>\r\n  </div>\r\n\r\n  <div class=\"col-lg-12\">\r\n    <div class=\"panel panel-default theme\">\r\n      <ma-dashboard-panel\r\n        collection=\"dashboardController.collections.sales_report\"\r\n        entries=\"dashboardController.entries.sales_report\"\r\n        datastore=\"dashboardController.datastore\"\r\n      ></ma-dashboard-panel>\r\n    </div>\r\n  </div>\r\n\r\n  <div class=\"container-fluid\">\r\n    <!--div class=\"col-xs-2 idiqagentstatus-buttonHolders pull-right\">\r\n        <button type=\"button\" class=\"btn btn-xs\" ng-click=\"agentClicked()\">Show hidden Node and change color</button>\r\n      </div-->\r\n\r\n  </div>\r\n</div>\r\n";
 
 /***/ }),
-/* 256 */
+/* 257 */
 /***/ (function(module, exports) {
 
 	module.exports = "<div class=\"navbar-header\">\r\n    <button type=\"button\" class=\"navbar-toggle\" ng-click=\"isCollapsed = !isCollapsed\">\r\n        <span class=\"icon-bar\"></span>\r\n        <span class=\"icon-bar\"></span>\r\n        <span class=\"icon-bar\"></span>\r\n    </button>\r\n    <a class=\"navbar-brand\" href=\"#\" ng-click=\"appController.displayHome()\" ng-app=\"myApp\" ng-controller=\"envVariablesCtrl\">\r\n\r\n        <div class=\"row\">\r\n            <div class=\"col-sm-6\">\r\n                <img src=\"{{company_logo}}\"  class=\"img-responsive logo_company\" alt=\"Company Logo\">\r\n            </div>\r\n            <div class=\"col-sm-6\">\r\n                <p id=\"company_name\">{{company_name}} - Administration System</p>\r\n            </div>\r\n        </div>\r\n    </a>\r\n</div>\r\n\r\n<ul class=\"nav navbar-top-links navbar-right text-center responsive\">\r\n    <li uib-dropdown>\r\n        <a uib-dropdown-toggle href=\"#\" aria-expanded=\"true\" ng-controller=\"username\">\r\n            <i class=\"fa fa-user fa-lg\"></i>&nbsp; {{ username }}&nbsp;<i class=\"fa fa-caret-down\"></i>\r\n        </a>\r\n        <ul class=\"dropdown-menu dropdown-user\" role=\"menu\">\r\n            <li><a href=\"#/personal\"><i class=\"fa fa-user fa-fw\"></i> Personal Details</a></li>\r\n            <li><a href=\"#/change-password\"><i class=\"fa fa-cog fa-fw\"></i> Change Password</a></li>\r\n            <li><a href=\"#\" onclick=\"logout()\"><i class=\"fa fa-sign-out fa-fw\"></i> Logout</a></li>\r\n        </ul>\r\n    </li>\r\n</ul>\r\n\r\n<ul class=\"nav navbar-top-links navbar-right text-center\">\r\n    <li uib-dropdown ng-controller=\"languageCtrl\">\r\n        <a id=\"single-button\" href=\"#\" aria-expanded=\"true\" uib-dropdown-toggle ng-disabled=\"disabled\">\r\n            <i class=\"fa fa-globe fa-lg\"></i>&nbsp; Language {{button}}&nbsp;<i class=\"fa fa-caret-down\"></i>\r\n        </a>\r\n        <ul class=\"dropdown-menu dropdown-user\" role=\"menu\" aria-labelledby=\"single-button\">\r\n            <li role=\"menuitem\">\r\n                <a ng-click=\"serve_language('en');change('English')\"><i class=\"fa fa-sign-out fa-fw\"></i> English</a>\r\n                <a ng-click=\"serve_language('fr');change('French')\"><i class=\"fa fa-sign-out fa-fw\"></i> French</a>\r\n                <a ng-click=\"serve_language('sp');change('Spanish')\"><i class=\"fa fa-sign-out fa-fw\"></i> Spanish</a>\r\n\t\t\t\t<a ng-click=\"serve_language('sq');change('Albanian')\"><i class=\"fa fa-sign-out fa-fw\"></i> Albanian</a>\r\n                <a ng-click=\"serve_language('pt');change('Portuguese')\"><i class=\"fa fa-sign-out fa-fw\"></i> Portuguese</a>\r\n            </li>\r\n\r\n        </ul>\r\n    </li>\r\n</ul>\r\n\r\n\r\n\r\n";
 
 /***/ }),
-/* 257 */
+/* 258 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -24690,7 +24751,7 @@
 	module.exports = exports["default"];
 
 /***/ }),
-/* 258 */
+/* 259 */
 /***/ (function(module, exports) {
 
 	"use strict";
@@ -24732,7 +24793,7 @@
 	module.exports = exports["default"];
 
 /***/ }),
-/* 259 */
+/* 260 */
 /***/ (function(module, exports) {
 
 	// removed by extract-text-webpack-plugin

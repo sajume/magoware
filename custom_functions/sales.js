@@ -21,19 +21,20 @@ function add_subscription(req, res, login_id, combo_id, username){
         }]
     }).then(function(current_subscription){
         if(current_subscription.length < 1){
-            var clear_response = new response.APPLICATION_RESPONSE(req.body.language, 200, 1, 'OK_DESCRIPTION', 'OK_DATA');
+            const clear_response = new response.APPLICATION_RESPONSE(req.body.language, 200, 1, 'OK_DESCRIPTION', 'OK_DATA');
             clear_response.extra_data = "This product is empty";
             res.send(clear_response);
         }
         else{
-            for(var i = 0; i<current_subscription.length; i++){
+            for(let i = 0; i < current_subscription.length; i++){
+                let startdate, enddate;
                 if(current_subscription[0].combo_packages[0].package.subscriptions[0]){
-                    var startdate = current_subscription[0].combo_packages[0].package.subscriptions[0].start_date;
-                    var enddate = moment(current_subscription[0].combo_packages[0].package.subscriptions[0].end_date, 'YYYY-MM-DD hh:mm:ss').add(current_subscription[0].duration, 'day');
+                    startdate = current_subscription[0].combo_packages[0].package.subscriptions[0].start_date;
+                    enddate = moment(current_subscription[0].combo_packages[0].package.subscriptions[0].end_date, 'YYYY-MM-DD hh:mm:ss').add(current_subscription[0].duration, 'day');
                 }
                 else{
-                    var startdate = dateFormat(Date.now(), 'yyyy-mm-dd HH:MM:ss');
-                    var enddate = dateFormat(Date.now() + current_subscription[0].duration*86400000, 'yyyy-mm-dd HH:MM:ss');
+                    startdate = dateFormat(Date.now(), 'yyyy-mm-dd HH:MM:ss');
+                    enddate = dateFormat(Date.now() + current_subscription[0].duration*86400000, 'yyyy-mm-dd HH:MM:ss');
                 }
                 db.subscription.upsert({
                     login_id:            login_id,
@@ -51,9 +52,11 @@ function add_subscription(req, res, login_id, combo_id, username){
                         user_username:      username,
                         distributorname:    '',
                         saledate:           dateFormat(Date.now(), 'yyyy-mm-dd HH:MM:ss'),
-                        company_id:          current_subscription.company_id
+                        company_id:         current_subscription.company_id,
+                        duration:           db.combo.duration,
+                        value:              db.combo.value
                     }).then(function(result){
-                        var clear_response = new response.APPLICATION_RESPONSE(req.body.language, 200, 1, 'OK_DESCRIPTION', 'OK_DATA');
+                        const clear_response = new response.APPLICATION_RESPONSE(req.body.language, 200, 1, 'OK_DESCRIPTION', 'OK_DATA');
                         res.send(clear_response);
                     }).catch(function(error){
                         winston.error("Error at creating sale report, error: ",error);
@@ -74,7 +77,8 @@ function add_subscription(req, res, login_id, combo_id, username){
 exports.add_subscription_transaction = function(req,res,sale_or_refund,transaction_id,start_date,end_date) {
 
     // if product_id exists in param list search combo by product_id, else search by combo id
-    var combo_where = {company_id: req.token.company_id, isavailable: true}; //query parameter
+    const company_id = req.get('company_id') || 1;
+    const combo_where = {company_id: company_id, isavailable: true}; //query parameter
     if(req.body.product_id) {
         combo_where.product_id = req.body.product_id; //if product id is coming
     }
@@ -88,12 +92,12 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
         return {status: false, message: 'Product identification parameters missing'};
     }
 
-    var transactions_array = [];
+    let transactions_array = [];
 
     if(!sale_or_refund) sale_or_refund = 1;
     if(!transaction_id) transaction_id = "mago-" + Date.now();
-    if(typeof start_date == 'undefined') start_date = Date.now(); //
-    if(typeof end_date == 'undefined') end_date = false; //
+    if(!start_date) start_date = Date.now(); //
+    if(!end_date) end_date = false; //
 
     // Loading Combo with All its packages
     return db.combo.findOne({
@@ -104,20 +108,21 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
             // Load Customer by LoginID
             return db.login_data.findOne({
                 where: {
-                        $or: {
-                            username: req.body.username,
-                            id: req.body.login_data_id
-                        }
+                    company_id: company_id,
+                    $or: {
+                        username: req.body.username,
+                        id: req.body.login_data_id
+                    }
                 }, include: [{model: db.customer_data}, {model: db.subscription}]
             }).then(function (loginData) {
                 if (!loginData) return {status: false, message: 'Login data not found during subscription transaction'}; //no username found
 
                 return sequelize_t.sequelize.transaction(function (t) {
+                        const startDate = new Date(start_date);
                         combo.combo_packages.forEach(function (item, i, arr) {
-                            var runningSub = hasPackage(item.package_id, loginData.subscriptions);
-                            var startDate = new Date(start_date);
+                            const runningSub = hasPackage(item.package_id, loginData.subscriptions);
 
-                            var sub = {
+                            const sub = {
                                 login_id: loginData.id,
                                 package_id: item.package_id,
                                 company_id: req.token.company_id,
@@ -125,7 +130,7 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                                 user_username: req.token.username //live
                             };
 
-                            if (typeof runningSub == 'undefined') {
+                            if (!runningSub) {
                                 sub.start_date = startDate;
                                 if(end_date) {
                                     sub.end_date = end_date;
@@ -142,14 +147,14 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                                     runningSub.end_date = end_date;
                                 }
                                 else {
-                                    if (runningSub.end_date > startDate) {
+                                    if (runningSub.end_date.getTime() > startDate.getTime()) {
                                         runningSub.end_date = addDays(runningSub.end_date, combo.duration * sale_or_refund);
                                     } else {
                                         runningSub.start_date = startDate;
                                         runningSub.end_date = addDays(startDate, combo.duration * sale_or_refund);
                                     }
                                 }
-
+                                
                                 transactions_array.push(    //add update to transaction array
                                     db.subscription.update(runningSub.dataValues, {
                                         where: {id: runningSub.id},
@@ -159,7 +164,7 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                             }
                         });//end package loop
 
-                        var salesreportdata = {
+                        const salesreportdata = {
                             transaction_id: transaction_id,
                             user_id : req.token.id,
                             on_behalf_id: req.body.on_behalf_id,
@@ -193,44 +198,53 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                             );
                          }
 
-                        return Promise.all(transactions_array, {transaction:t}); //execute transaction
+                    return Promise.all(transactions_array).catch(function (err) {
+                        winston.error("Error executing subscription transaction, error: ", err);
+                        return {status: false, message: 'Error executing subscription transaction'};
+                    });
 
-                 }).then(function (result) {
-                    return {status: true, transaction_id: transaction_id, message:'subscription transaction executed correctly'};
-                 }).catch(function (err) {
-                    winston.error('error executing subscription transaction: ',err);
-                    return {status: false, message:'error executing subscription transaction'};
-                 })
+                }).then(function (result) {
+                    return {
+                        status: true,
+                        transaction_id: transaction_id,
+                        message: 'subscription transaction executed correctly'
+                    };
+                }).catch(function (err) {
+                    winston.error('Error executing subscription transaction: ', err);
+                    return {status: false, message: 'Error executing subscription transaction'};
+                })
             });
         } //end if combo found
     });//end combo search
 
-    function hasPackage(package_id,subscription){
-        for(var i=0;i<subscription.length;i++)
-            if(subscription[i].package_id == package_id)
+    function hasPackage(package_id, subscription) {
+        for (let i = 0; i < subscription.length; i++)
+            if (subscription[i].package_id == package_id)
                 return subscription[i];
     }
 
     function addDays(startdate, duration) {
-            var start_date_ts = moment(startdate, "YYYY-MM-DD hh:mm:ss").valueOf()/1000; //convert start date to timestamp in seconds
-            var end_date_ts = start_date_ts + duration * 86400; //add duration in number of seconds
-            var end_date =  moment.unix(end_date_ts).format("YYYY-MM-DD hh:mm:ss"); // convert enddate from timestamp to datetime
-            return end_date;
+        const start_date_ts = moment(startdate, "YYYY-MM-DD hh:mm:ss").valueOf() / 1000; //convert start date to timestamp in seconds
+        const end_date_ts = start_date_ts + duration * 86400; //add duration in number of seconds
+         // convert enddate from timestamp to datetime
+        return moment.unix(end_date_ts).format("YYYY-MM-DD hh:mm:ss");
     }
-}
+};
 
 //saves movie in list of movies bought by this client
 exports.buy_movie = function(req, res, username, vod_id, transaction_id) {
 
     let movie_purchase_data = []; //the records saved will be stored here
-    const company_id = req.body.company_id;
-
+    //const company_id = req.body.company_id;
+    const company_id = req.get('company_id') || 1;
     // search for the combo for transactional vod. if available, proceed
     return db.combo.findOne({
-        attributes: ['id', 'duration'],
+        attributes: ['id', 'duration', 'product_id'],
         where: {product_id: 'transactional_vod', isavailable: true, company_id: company_id}
+        // where: { isavailable: true, company_id: company_id}
     }).then(function(t_vod_combo) {
-        if(typeof req.app.locals.backendsettings[company_id].t_vod_duration !== "number"){
+
+        if(typeof t_vod_combo.duration !== "number"){
             return {status: false, message:'buying movie failed. transactional vod not available', sale_data: []}; //the feature of transactional vod is not active
         }
         else{
@@ -242,7 +256,7 @@ exports.buy_movie = function(req, res, username, vod_id, transaction_id) {
                 if (!client) return {status: false, message: 'unable to find this client', sale_data: []}; //client not found
 
                 return sequelize_t.sequelize.transaction(function (t) {
-                    var t_vod_sales_data = {
+                    const t_vod_sales_data = {
                         vod_id: vod_id,
                         login_data_id: client.id,
                         start_time: Date.now(),
@@ -250,7 +264,7 @@ exports.buy_movie = function(req, res, username, vod_id, transaction_id) {
                         transaction_id: transaction_id,
                         company_id: company_id
                     };
-                    var salesreport_data = {
+                    const salesreport_data = {
                         transaction_id: transaction_id,
                         user_id: 1,
                         combo_id: t_vod_combo.id,

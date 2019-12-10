@@ -23,7 +23,7 @@ Custompath is the relative path of the file, same url that will be stored to the
 For each hierarchy level, it checks if path exists. If not, creates folder.
  */
 function mkdir_recursive(basepath, custompath){
-    var fullpath = basepath;
+    let fullpath = basepath;
     for(var i = 0; i< custompath.split('/').length-1; i++){ //length-1 makes sure that the filename itself is not included in the path creation
         fullpath = fullpath + custompath.split('/')[i]+'/';
         if (!fs.existsSync(fullpath)) {
@@ -39,14 +39,16 @@ function moveFile(sourcePath, destPath, cb){
 }
 
 function copyFile(sourcePath, destPath, cb, moveFlag){
-    var source = fs.createReadStream(sourcePath);
-    var dest = fs.createWriteStream(destPath);
+    const source = fs.createReadStream(sourcePath);
+    const dest = fs.createWriteStream(destPath);
 
     source.pipe(dest);
     source.on('end', function() {
         if (moveFlag)
             fs.unlink(sourcePath,function (err) {
-                winston.error('Error deleting file at common controller, error: ', err);
+                if(err) {
+                    winston.error('Error deleting file at common controller, error: ', err);
+                }
             });
         cb();
     });
@@ -56,11 +58,13 @@ function copyFile(sourcePath, destPath, cb, moveFlag){
 
 function deleteFile(filePath)
 {
-    for(var i=0;i<filePath.length;i++)
+    for(let i = 0;i < filePath.length; i++)
     {
-        var Path=path.resolve('./public'+filePath[i]);
+        const Path = path.resolve('./public'+filePath[i]);
         fs.unlink(Path,function (err) {
-            winston.error('Error deleting file at common controller, error: ', err);
+            if(err) {
+                winston.error('Error deleting file at common controller, error: ', err);
+            }
         });
     }
 }

@@ -189,7 +189,7 @@ exports.read = function(req, res) {
         url: 'https://api.themoviedb.org/3/tv/'+id,
         qs:
             { language: 'en-US',
-                api_key: '',
+                api_key: 'e76289b7e0306b6e6b6088148b804f01',
                 append_to_response: 'credits,videos'
             },
         body: '{}' };
@@ -260,7 +260,7 @@ exports.list = function(req, res) {
         qs:
             { page: page,
                 query: query.q,
-                api_key: '' },
+                api_key: 'e76289b7e0306b6e6b6088148b804f01' },
         body: '{}' };
 
     request(options, function (error, response, body) {

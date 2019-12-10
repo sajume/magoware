@@ -3,7 +3,7 @@
 /**
  * Module dependencies.
  */
-var path = require('path'),
+const path = require('path'),
     dateFormat = require('dateformat'),
     errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
     logHandler = require(path.resolve('./modules/mago/server/controllers/logs.server.controller')),
@@ -17,9 +17,9 @@ var path = require('path'),
     companyFunctions = require(path.resolve('./custom_functions/company')),
     userFunctions = require(path.resolve('./custom_functions/user'));
 
-var sequelize_t = require(path.resolve('./config/lib/sequelize'));
-var jwt = require('jsonwebtoken'),
-    jwtSecret = "thisIsMySecretPasscode";
+const sequelize_t = require(path.resolve('./config/lib/sequelize'));
+const jwt = require('jsonwebtoken'),
+    jwtSecret = process.env.JWT_SECRET;
 
 
 /**
@@ -39,16 +39,16 @@ exports.read = function (req, res) {
 
 exports.env_settings = function (req, res) {
 
-    var company_id = 1;
+    let company_id = 1;
     if (req.get("Authorization")) {
-        var aHeader = req.get("Authorization");
+        const aHeader = req.get("Authorization");
 
         //Check if this request is signed by a valid token
-        var token = null;
+        let token = null;
         if (typeof aHeader != 'undefined') token = aHeader;
 
         try {
-            var decoded = jwt.verify(token, jwtSecret);
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
             company_id = decoded.company_id;
         } catch (err) {
             company_id = 1;

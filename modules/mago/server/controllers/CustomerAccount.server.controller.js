@@ -4,7 +4,7 @@
 /**
  * Module dependencies.
  */
-var path = require('path'),
+const path = require('path'),
     errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
     logHandler = require(path.resolve('./modules/mago/server/controllers/logs.server.controller')),
     saas_functions = require(path.resolve('./custom_functions/saas_functions')),
@@ -13,9 +13,10 @@ var path = require('path'),
     responses = require(path.resolve("./config/responses.js")),
     db = require(path.resolve('./config/lib/sequelize')).models,
     Sequelize = require('sequelize'),
-    db_t = require(path.resolve('./config/lib/sequelize')),
-    DBModel = db.login_data;
-var db_t = require(path.resolve('./config/lib/sequelize'));
+    DBModel = db.login_data,
+    winston = require('winston');
+
+const db_t = require(path.resolve('./config/lib/sequelize'));
 
 
 /**
@@ -199,11 +200,11 @@ exports.updateClient = function(req, res){
     }).then(function (client_instance) {
         return db_t.sequelize.transaction(function (t) {
             return db.customer_data.update(
-                req.body.customer_datum,
-                {
-                    where: {id: req.body.customer_datum.id},
-                    transaction: t
-                }
+              req.body.customer_datum,
+              {
+                  where: {id: req.body.customer_datum.id},
+                  transaction: t
+              }
             ).then(function (updated_customer) {
                 return client_instance.update(req.body, {where: {id: req.params.customerId}, transaction: t});
             });
@@ -221,4 +222,3 @@ exports.updateClient = function(req, res){
 
 
 };
-

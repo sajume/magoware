@@ -37,13 +37,13 @@ exports.listCustomers = function(req, res) {
     query.include = [
         {
             model: db.customer_data,
-            attributes:['firstname','lastname','email','telephone','address','city','country'],
+            attributes:['firstname','lastname','email','telephone','address','city','country','updatedAt'],
             required: true
         }
     ];
     query.limit = 100;
     query.raw = true;
-    query.order = 'id desc'
+    query.order = 'customer_datum.updatedAt desc'
     query.raw = true;
 
     if (req.query.offset) {
@@ -107,7 +107,7 @@ exports.getCustomer = function(req, res) {
             if (customer) {
                 res.send({data: customer});
             } else {
-                res.status(404).status(404).send({error: {code: 404, message: 'Customer not found'}});
+                res.status(404).send({error: {code: 404, message: 'Customer not found'}});
             }
         }).catch(function(err) {
             winston.error('Getting customer failed with error: ', err);

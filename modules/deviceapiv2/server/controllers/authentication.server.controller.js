@@ -56,10 +56,37 @@ function pass_decrypt(encryptedText, key) {
     }
 };
 
+function encryptPasswordAsync(password, salt, callback) {
+    if(!password || ! salt) {
+        callback('');
+        return;
+    }
 
+    salt = new Buffer(salt, 'base64');
+    crypto.pbkdf2(password, salt, 10000, 64, 'sha1', function(err, derivedKey) {
+        if (err) {
+            callback('');
+            return;
+        }
+
+        callback(derivedKey.toString('base64'))
+    });
+}
+
+function authenticateAsync(password, salt, hashedPassword, callback) {
+    encryptPasswordAsync(password, salt, function(hash) {
+        if (hash === hashedPassword) {
+            callback(true);
+        } else {
+            callback(false);
+        }
+    });
+}
 module.exports = {
     makesalt: makesalt,
     encryptPassword: encryptPassword,
     authenticate: authenticate,
-    decryptPassword: pass_decrypt
+    decryptPassword: pass_decrypt,
+    encryptPasswordAsync: encryptPasswordAsync,
+    authenticateAsync: authenticateAsync
 }

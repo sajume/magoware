@@ -23,6 +23,6 @@ module.exports = function(app) {
   app.route('/apiv2/testjwtoken')
       .all(core.testjwtoken);
 
-
-
+  app.route('/apiv2/testauth')
+     .post(core.testAuthToken)
 };

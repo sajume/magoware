@@ -411,15 +411,22 @@ exports.genre = function(req, res) {
  *   }
  */
 exports.genre_get = function(req, res) {
+    let where = {
+        is_available: true, company_id: req.thisuser.company_id
+    };
+
+    if(req.thisuser.show_adult === false) where.pin_protected = false;
+
     models.genre.findAll({
-        attributes: ['id',['description', 'name'], [Sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, Sequelize.col('icon_url')), 'icon'] ],
-        where: {is_available: true, company_id: req.thisuser.company_id}
+        attributes: ['id', 'pin_protected', ['description', 'name'], [Sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, Sequelize.col('icon_url')), 'icon'] ],
+        where: where
     }).then(function (result) {
-        var favorite_genre = {
-            "id": 666,
-            "name": "Favorites"
+        const favorite_genre = {
+            id: 666,
+            name: "Favorites",
+            pin_protected: false
         };
-        var response_data = result.concat(favorite_genre);
+        const response_data = result.concat(favorite_genre);
         response.send_res_get(req, res, response_data, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
     }).catch(function(error) {
         winston.error("Getting list of genres failed with error: ", error);
@@ -477,12 +484,18 @@ exports.favorites = function(req, res) {
         },
         function(user_id, channel_id) {
             if(req.body.action == "1"){
-                models.favorite_channels.create({
-                    channel_id: channel_id,
-                    user_id: user_id,
-                    company_id: req.thisuser.company_id
-                }).then(function (result) {
-                    var extra_data = "Added channel "+req.body.channelNumber+" as a favorite of user "+req.auth_obj.username; //todo: dynamic response
+                models.favorite_channels.findOrCreate({
+                    where: {
+                        channel_id: channel_id,
+                        user_id: user_id,
+                        company_id: req.thisuser.company_id
+                    }
+                }).then(function ([fav_channel, created]) {
+                    if(created === false) {
+                        return response.send_res(req, res, [], 409, 1, 'FAVORITE_CHANNEL_ALREADY_EXISTS_AS_FAVORITE', "FAVORITE_CHANNEL_ALREADY_EXISTS_AS_FAVORITE", 'private,max-age=86400');
+                    }
+
+                    const extra_data = "Added channel " + req.body.channelNumber + " as a favorite of user " + req.auth_obj.username;
                     response.send_res(req, res, [], 200, 1, 'OK_DESCRIPTION', extra_data, 'private,max-age=86400');
                 }).catch(function(error) {
                     winston.error("Saving channel as favorite failed with error: ", error);
@@ -496,7 +509,7 @@ exports.favorites = function(req, res) {
                         user_id: user_id
                     }
                 }).then(function (result) {
-                    var extra_data = "Removed channel "+req.body.channelNumber+" from the list of favorites for user "+req.auth_obj.username; //todo: dynamic response
+                    const extra_data = "Removed channel "+req.body.channelNumber+" from the list of favorites for user "+req.auth_obj.username; //todo: dynamic response
                     response.send_res(req, res, [], 200, 1, 'OK_DESCRIPTION', extra_data, 'private,max-age=86400');
                 }).catch(function(error) {
                     winston.error("Removing channel from favorites failed with error: ", error);

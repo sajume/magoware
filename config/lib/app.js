@@ -14,9 +14,9 @@ var config = require('../config'),
 
 module.exports.init = function init(callback) {
   var app;
-  if (process.env.NODE_APP_INSTANCE == 0) {
+  if (config.redis.embedded && process.env.NODE_APP_INSTANCE == 0) {
     //start server redis immediately
-    redis.startServer(function(err) {
+    redis.startServer(config.redis, function(err) {
       if (err) {
         winston.error("Error starting redis server",err);
         process.exit(1);
@@ -26,14 +26,17 @@ module.exports.init = function init(callback) {
         process.send('ready');
       }
       
-      redis.createClient();
+      redis.createClient(config.redis);
       app = express.init(sequelize, redis.client);
       if (callback) callback(app, sequelize, config);    
-    })
+    });
   }
   else {
-    process.send('ready')
-    redis.createClient();
+    if (process.send) {
+      process.send('ready');
+    }
+
+    redis.createClient(config.redis);
     app = express.init(sequelize, redis.client);
     if (callback) callback(app, sequelize, config);    
   }

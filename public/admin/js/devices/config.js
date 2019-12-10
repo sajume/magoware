@@ -24,6 +24,8 @@ export default function (nga, admin) {
 						  })
 				.template((entry) => `<a target="_blank" href="https://tools.keycdn.com/geo?host=${entry.values.device_ip}">{{entry.values.device_ip}}</a>`)
 				.label('IP'),
+            nga.field('city', 'string')
+                .label('City'),
 			nga.field('device_mac_address', 'string')
 				.label('Ethernet'),
 			nga.field('device_wifimac_address', 'string')
@@ -42,16 +44,18 @@ export default function (nga, admin) {
 			nga.field('appid')
 				.map(function app(value) {
 					if (value === 1) {
-								return 'Box';
-						} else if (value === 2) {
-								return 'Android';
-						} else if (value === 3) {
-							return 'Ios';
-						} else if (value === 4) {
-							return 'Stv';
-						} else if (value === 5) {
-							return 'Samsung';
-						}
+						return 'Box';
+					} else if (value === 2) {
+						return 'Android';
+					} else if (value === 3) {
+						return 'Ios';
+					} else if (value === 4) {
+						return 'Stv';
+					} else if (value === 5) {
+						return 'Samsung';
+					} else if (value === 6) {
+						return 'Apple TV';
+					}
 				})
 				.label('App'),
 			nga.field('app_version')
@@ -79,13 +83,14 @@ export default function (nga, admin) {
               .template('<div class="input-group"><input type="text" ng-model="value" placeholder="Search" class="form-control"><span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span></div>')
               .pinned(true),
            nga.field('appid','choice')
-               .choices([
-                   { value: 1, label: 'Box' },
-                   { value: 2, label: 'Android' },
-                   { value: 3, label: 'Ios' },
-                   { value: 4, label: 'Stv' },
-                   { value: 5, label: 'Samsung' }
-               ])
+						 .choices([
+							 {value: 1, label: 'Box'},
+							 {value: 2, label: 'Android'},
+							 {value: 3, label: 'Ios'},
+							 {value: 4, label: 'Stv'},
+							 {value: 5, label: 'Samsung'},
+							 {value: 6, label: 'Apple TV'},
+						 ])
            	  .attributes({ placeholder: 'App Id' })
         	  .label('App ID'),
            nga.field('app_version')
@@ -153,6 +158,11 @@ export default function (nga, admin) {
 				.validation({ required: true })
 				.editable(false)
 				.label('Device IP'),
+            nga.field('city', 'string')
+                .attributes({ placeholder: 'City' })
+                .validation({ required: true })
+                .editable(false)
+                .label('City'),
 			nga.field('device_id', 'string')
 				.attributes({ placeholder: 'Device ID' })
 				.validation({ required: true })

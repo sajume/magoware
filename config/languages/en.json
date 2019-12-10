@@ -63,6 +63,8 @@
         "TRAILER": "Trailer",
         "THUMBUP": "Thumb-up",
         "THUMBDOWN": "Thumb-down",
-        "COMING_SOON": "Coming soon"
+        "COMING_SOON": "Coming soon",
+        "FAVORITE_CHANNEL_ALREADY_EXISTS_AS_FAVORITE": "This channel already exists as favorite",
+        "NO_COMPANIES_AVAILABLE": "There are no companies with this username"
     }
 }

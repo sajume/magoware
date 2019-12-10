@@ -200,7 +200,7 @@ export default function (nga, admin) {
 
     vodstream.editionView()
     	.title('<h4>Vod Streams <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.vod_id }}</h4>')  
-    	.actions(['list', 'delete'])         
+    	.actions(['delete'])
         .fields([
             vodstream.creationView().fields(),
         ]);

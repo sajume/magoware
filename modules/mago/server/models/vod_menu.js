@@ -33,7 +33,11 @@ module.exports = function(sequelize, DataTypes) {
         isavailable: {
             type: DataTypes.BOOLEAN,
             allowNull: false
-        }
+        },
+        icon_url: {
+            type: DataTypes.STRING(255),
+            allowNull: true
+        },
     }, {
         tableName: 'vod_menu',
         associate: function(models) {

@@ -9,7 +9,7 @@ var path = require('path'),
 var binName;
 var dir = './bin/redis';
 
-module.exports.startServer = function(callback) {
+module.exports.startServer = function(config, callback) {
     if (process.platform == 'win32') {
         binName = 'redis-server.exe';
         if (!fs.existsSync(dir)) {
@@ -93,7 +93,7 @@ module.exports.startServer = function(callback) {
     
     function start () {
         server = new RedisServer({
-            port: 6379,
+            port: config.port,
             bin: dir + '/' + binName
         });
     
@@ -109,8 +109,21 @@ module.exports.startServer = function(callback) {
     }    
 }
 
-module.exports.createClient = function() {
-    this.client = redis.createClient({port: 6379})
+module.exports.createClient = function(config) {
+    let c = {
+        host: config.host,
+        port: config.port,
+        db: config.database
+    }
+
+    if (config.embedded == false) {
+        //Redis is external
+        if (config.password) {
+            c.password = config.password;
+        }
+    }
+
+    this.client = redis.createClient(c)
     
     this.client.on('error', function(error){
         winston.error("Redis error: " + error);

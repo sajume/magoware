@@ -881,20 +881,22 @@ export default function (nga, admin) {
                     nga.field('device_ip')
                         .cssClasses('hidden-xs')
                         .label('Device IP'),
-                    nga.field('appid')
-                        .map(function app(value) {
-                            if (value === 1) {
-                                return 'Box';
-                            } else if (value === 2) {
-                                return 'Android';
-                            } else if (value === 3) {
-                                return 'Ios';
-                            } else if (value === 4) {
-                                return 'Stv';
-                            } else if (value === 5) {
-                                return 'Samsung';
-                            }
-                        })
+                        nga.field('appid')
+                          .map(function app(value) {
+                                  if (value === 1) {
+                                          return 'Box';
+                                  } else if (value === 2) {
+                                          return 'Android';
+                                  } else if (value === 3) {
+                                          return 'Ios';
+                                  } else if (value === 4) {
+                                          return 'Stv';
+                                  } else if (value === 5) {
+                                          return 'Samsung';
+                                  } else if (value === 6) {
+                                          return 'Apple TV';
+                                  }
+                          })
                         .cssClasses('hidden-xs')
                         .label('App ID'),
                     nga.field('app_version')
@@ -912,8 +914,9 @@ export default function (nga, admin) {
                     nga.field('device_active','boolean')
                         .label('Device Active'),
                 ])
-                .sortField('appid')
-                .sortDir('ASC')
+                .perPage(100)
+                .sortField('updatedAt')
+                .sortDir('DESC')
                 .listActions(['edit']),
 
 
