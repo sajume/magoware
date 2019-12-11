@@ -1,4 +1,4 @@
-![Magoware Logo](https://www.magoware.tv/images/logo-magoware_white.png)
+![Magoware Logo](https://github.com/MAGOWARE/backoffice-administration/blob/master/public/admin/images/github-mago-logo.png)
 
 MAGOWARE is an IPTV/OTT solution for Pay Tv Businesses. The administration portal is build on Sequelize, Express, ng-admin, and Node.js
 
