@@ -1,4 +1,4 @@
-![alt tag](https://www.magoware.tv/wp-content/uploads/2016/06/logo.png)
+![Magoware Logo](https://www.magoware.tv/images/logo-magoware_white.png)
 
 MAGOWARE is an IPTV/OTT solution for Pay Tv Businesses. The administration portal is build on Sequelize, Express, ng-admin, and Node.js
 
@@ -9,6 +9,13 @@ MAGOWARE is an IPTV/OTT solution for Pay Tv Businesses. The administration porta
 - PostgreSQL 9.4 or MySQL, MariaDB, SQLite and MSSQL
 - Redis Server
 - Node.js 10.0.0 and up
+- node-gyp (Nodejs module used to compile native code)
+- Python 2 (node-gyp dependency)
+
+### Install the node modules
+```$bash
+$ npm install
+```
 
 ### Running in Production mode
 
