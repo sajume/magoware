@@ -77,7 +77,7 @@ function add_subscription(req, res, login_id, combo_id, username){
 exports.add_subscription_transaction = function(req,res,sale_or_refund,transaction_id,start_date,end_date) {
 
     // if product_id exists in param list search combo by product_id, else search by combo id
-    const company_id = req.get('company_id') || 1;
+    const company_id = req.token.company_id || 1;
     const combo_where = {company_id: company_id, isavailable: true}; //query parameter
     if(req.body.product_id) {
         combo_where.product_id = req.body.product_id; //if product id is coming
