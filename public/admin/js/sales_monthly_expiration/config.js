@@ -1,7 +1,7 @@
 export default function (nga, admin) {
     var salesreport = admin.getEntity('sales_monthly_expiration');
     salesreport.listView()
-        .title('<h4>Subscription expirations by month<i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>')
+        .title('<h4>Expirations by month<i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>')
         .batchActions([])
         .fields([
             nga.field('enddate', 'date')

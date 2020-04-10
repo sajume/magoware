@@ -3,7 +3,7 @@ var path = require('path'),
     request = require("request");
 var winston = require("winston");
 
-function send_notification(fcm_token, firebase_key, user, message, ttl, push_message, save_message, callback) {
+function send_notification(fcm_token, firebase_key, user,message, ttl, push_message, save_message, id ,  callback) {
     //push payload is the same inside this function call
     if(message.data) {
         var is_info = (message.data.type === '1') ? true : false;
@@ -67,6 +67,10 @@ function send_notification(fcm_token, firebase_key, user, message, ttl, push_mes
                 exports.save_message(user, fcm_token, description, push_message, title); //save record for sent info messages
             }
         }
+        else if(!error && body && is_info === false && ((message.data.type === 'imageandtext') || (message.data.type === 'textonly') || (message.data.type === 'imageonly'))) {
+                 exports.save_banner(id, fcm_token,description, push_message, title ); //save record for sent info messages
+
+        }
     });
 
 }
@@ -87,6 +91,21 @@ function save_message(user, googleappid, message, action, title, company_id){
         winston.error("Error at creating push notification, error: ", err);
     });
 
+}
+
+function save_banner(id , googleappid, company_id, status, action){
+    db.commands.create({
+        login_data_id: id,
+        googleappid: googleappid,
+        status: status,
+        action: action,
+        command: 1,
+        company_id: company_id
+    }).then(function(result) {
+        winston.info('Push notifications saved for banners ');
+    }).catch(function(err) {
+        winston.error("Error at creating push notification, error: ", err);
+    });
 }
 
 function INFO_PUSH(title, body, type, parameters){
@@ -186,6 +205,7 @@ function ACTION_PUSH(title, body, type, action, parameters) {
 
 exports.send_notification = send_notification;
 exports.save_message = save_message;
+exports.save_banner = save_banner;
 exports.INFO_PUSH = INFO_PUSH;
 exports.SCHEDULE_PUSH = SCHEDULE_PUSH;
 exports.CUSTOM_TOAST_PUSH = CUSTOM_TOAST_PUSH;

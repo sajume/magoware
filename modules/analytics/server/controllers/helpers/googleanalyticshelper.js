@@ -8,6 +8,8 @@ var path = require('path'),
     vod = require(path.resolve("./modules/deviceapiv2/server/controllers/vod.server.controller.js"));
 
 
+
+
 function getlogtime(){
     var d = new Date();
     return d.getDate() + "-" + d.getMonth() + "-"+ d.getFullYear()+" "+ d.getHours()+":"+ d.getMinutes()+":"+ d.getSeconds();
@@ -25,7 +27,8 @@ function trackobject(object_data,req, cb) {
     object_data.v = 1;
     object_data.tid = req.app.locals.backendsettings[company_id].analytics_id; //analytics ID
     object_data.ua  = req.headers["user-agent"];    //user agent
-    object_data.cid = req.auth_obj.username;        //user ID
+    //object_data.cid = req.auth_obj.username;        //user ID
+    object_data.cid = req.auth_obj.username + "-" + req.auth_obj.boxid; //user ID
     object_data.uip = req.ip.replace('::ffff:', '');    // user ip
     object_data.sr  = req.body.screensize || null; //screen resolution
 
@@ -46,7 +49,6 @@ function trackobject(object_data,req, cb) {
 exports.trackevent = function(req, res) {
     res.setHeader('cache-control', 'no-store');
     if(req.body.event_category === 'vod' && req.body.event_action === 'movie start') vod.add_click(req.body.event_label); //increment clicks for a movie everythime it plays
-
     winston.info("Analytics request;"+req.method+";"+req.baseUrl+";"+querystring.stringify(req.body));
     var object_data = {
         t:'event',

@@ -32,7 +32,15 @@ exports.sendInvite = function(req, user, useRootMail) {
                 let htmlTemplate = null;
                 if (!template) {
                     //nedd to have invite default template
-                    htmlTemplate = 'email: ' + user.email + '</br> confirmation link:  ' + link;
+                    //htmlTemplate = 'email: ' + user.email + '</br> confirmation link:  ' + link;
+                    htmlTemplate = '<!DOCTYPE html>'+
+                        '<html lang="en" xmlns="http://www.w3.org/1999/xhtml"><head><title></title></head>'+
+                        '<body>'+
+                        '<p>Email: '+ ' '+user.email+'</p>'+
+                        'Please click this link to confirm your account'+
+                        '<p><a href="'+link+'"> Click Here</a></p>'+
+                        '</body>'+
+                        '</html>';
                 } else {
                     const htmlContent = template.content;
                     htmlTemplate = htmlContent.replace('{{email}}', user.email).replace('{{link}}', link).replace(/{{appName}}/g, req.app.locals.backendsettings[user.company_id].company_name).replace('{{url}}', link);

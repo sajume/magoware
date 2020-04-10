@@ -9,7 +9,8 @@ var config = require('../config'),
   sequelize = require('./sequelize-connect'),
   winston = require('./winston'),
   redis = require('./redis'),
-  autoDeleteFiles = require('../../custom_functions/autoDeleteFiles');
+  autoDeleteFiles = require('../../custom_functions/autoDeleteFiles'),
+  cache = require('./cache');
 
 
 module.exports.init = function init(callback) {
@@ -27,6 +28,7 @@ module.exports.init = function init(callback) {
       }
       
       redis.createClient(config.redis);
+      cache.init();
       app = express.init(sequelize, redis.client);
       if (callback) callback(app, sequelize, config);    
     });
@@ -37,6 +39,7 @@ module.exports.init = function init(callback) {
     }
 
     redis.createClient(config.redis);
+    cache.init();
     app = express.init(sequelize, redis.client);
     if (callback) callback(app, sequelize, config);    
   }

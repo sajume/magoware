@@ -8,7 +8,7 @@ var path = require('path'),
     errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
     subscription_functions = require(path.resolve('./custom_functions/sales.js')),
     db = require(path.resolve('./config/lib/sequelize')).models,
-    sequelizes =  require(path.resolve('./config/lib/sequelize')),
+    sequelizes = require(path.resolve('./config/lib/sequelize')),
     sequelize = require('sequelize'),
     dateFormat = require('dateformat'),
     moment = require('moment'),
@@ -16,60 +16,48 @@ var path = require('path'),
     fs = require('fs'),
     ejs = require('ejs'),
     pdf = require('html-pdf'),
-    DBModel = db.salesreport;
+    DBModel = db.salesreport,
+    phantomjs = require('phantomjs'),
+    eventSystem = require(path.resolve("./config/lib/event_system.js"));
 
 /**
  * Create
  */
-exports.create = function(req, res) {
+exports.create = function (req, res) {
 
     req.body.company_id = req.token.company_id; //save record for this company
-    DBModel.create(req.body).then(function(result) {
+    DBModel.create(req.body).then(function (result) {
         if (!result) {
             return res.status(400).send({message: 'fail create data'});
-        }
-        else {
+        } else {
             return res.jsonp(result);
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         winston.error("Creating new sale failed with error: ", err);
-        return res.status(400).send({ message: errorHandler.getErrorMessage(err) });
+        return res.status(400).send({message: errorHandler.getErrorMessage(err)});
     });
 };
 
 /**
  * Show current
  */
-exports.read = function(req, res) {
-    if(req.salesReport.company_id === req.token.company_id) res.json(req.salesReport);
+exports.read = function (req, res) {
+    if (req.salesReport.company_id === req.token.company_id) res.json(req.salesReport);
     else return res.status(404).send({message: 'No data with that identifier has been found'});
 };
 
 /**
  * Update
  */
-exports.update = function(req, res) {
-
-    var sale_or_refund = -1;
-    var transaction_id = req.body.transaction_id;
-
-    subscription_functions.add_subscription_transaction(req,res,sale_or_refund,transaction_id).then(function(result) {
-        if(result.status) {
-            var updateData = req.salesReport;
-            req.body.cancelation_date = Date.now();
-            req.body.cancelation_user = req.token.id;
-            req.body.company_id = req.token.company_id; //save record for this company
-            updateData.updateAttributes(req.body).then(function(result) {
-                //res.json(result);
-                res.status(200).send(result)
-            }).catch(function(err) {
-                winston.error("Updating sale failed with error: ", err);
-                return res.status(400).send({ message: errorHandler.getErrorMessage(err) });
-            });
-        }
-        else {
-            res.status(404).send(result)
-        }
+exports.update = function (req, res) {
+    var updateData = req.salesReport;
+    req.body.company_id = req.token.company_id;
+    updateData.updateAttributes(req.body).then(function (result) {
+        res.status(200).send(result)
+        return null;
+    }).catch(function (err) {
+        winston.error("Updating sale failed with error: ", err);
+        return res.status(400).send({message: errorHandler.getErrorMessage(err)});
     });
 };
 
@@ -91,93 +79,97 @@ exports.update = function(req, res) {
  *
 
  */
-exports.annul = function(req, res) {
+exports.annul = function (req, res) {
     var response = {};
     var username = (req.body.username) ? req.body.username : '';
     var duration = 0;
 
-    if(req.body.login_id && req.body.combo_id){
-        var salereport_where = {combo_id: req.body.combo_id, login_data_id: req.body.login_id,active: true};
-    }
-    else if(req.body.sale_id){
+    if (req.body.login_id && req.body.combo_id) {
+        var salereport_where = {combo_id: req.body.combo_id, login_data_id: req.body.login_id, active: true};
+    } else if (req.body.sale_id) {
         var sale_id = (req.body.sale_id);
         var salereport_where = {id: sale_id, active: true};
-    }
-    else {
-        return res.status(400).send({ message: 'No sale with these data exists' });
+    } else {
+        return res.status(400).send({message: 'No sale with these data exists'});
     }
 
     salereport_where.company_id = req.token.company_id;
 
     async.auto({
-        get_active_sale: function(callback) {
+        get_active_sale: function (callback) {
             db.salesreport.findOne({
                 attributes: ['id', 'combo_id', 'login_data_id'],
                 where: salereport_where
-            }).then(function(active_sale){
-                if(active_sale.length<1){
+            }).then(function (active_sale) {
+                if (active_sale.length < 1) {
                     response = {status: 400, message: 'Sale is not active'}
                     callback(true, response);
-                }
-                else{
+                } else {
                     callback(null, active_sale);
                 }
                 return null;
-            }).catch(function(error){
+            }).catch(function (error) {
                 winston.error("Finding specific sale failed with error: ", error);
                 response = {status: 400, message: 'Sale cannot be canceled'}
                 callback(true, response);
             });
         },
-        get_user_subscription: ['get_active_sale', function(results, callback) {
+        get_user_subscription: ['get_active_sale', function (results, callback) {
             db.combo.findAll({
                 attributes: ['id', 'duration'],
                 where: {id: results.get_active_sale.combo_id, company_id: req.token.company_id},
                 raw: true,
-                include:[{
+                include: [{
                     model: db.combo_packages, required: true, attributes: ['package_id'], include: [{
                         model: db.package, required: true, attributes: ['id'], include: [{
-                            model: db.subscription, required: false, attributes: ['id', 'start_date', 'end_date'], where: {login_id: results.get_active_sale.login_data_id}
+                            model: db.subscription,
+                            required: false,
+                            attributes: ['id', 'start_date', 'end_date'],
+                            where: {login_id: results.get_active_sale.login_data_id}
                         }]
                     }]
                 }]
-            }).then(function(current_subscription){
-                if(current_subscription.length < 1){
+            }).then(function (current_subscription) {
+                if (current_subscription.length < 1) {
                     response = {status: 400, message: 'Sale did not contain any package to be canceled'}
                     callback(true, response);
-                }
-                else{
+                } else {
                     duration = (req.body.duration) ? req.body.duration : current_subscription[0].duration; //if a specific duration is given, remove those days from subscription. otherwise remove combo duration
                     callback(null, current_subscription);
                 }
                 return null;
-            }).catch(function(error){
+            }).catch(function (error) {
                 winston.error("Getting combo to annul failed with error: ", error);
                 response = {status: 400, message: 'Could not proceed with annulment'};
                 callback(true, response);
             });
         }],
-        update_subscription: ['get_user_subscription', 'get_active_sale', function(results, callback) {
+        update_subscription: ['get_user_subscription', 'get_active_sale', function (results, callback) {
             var updated = 0;
-            for(var i = 0; i < results.get_user_subscription.length; i++) {
+            for (var i = 0; i < results.get_user_subscription.length; i++) {
                 var startdate = results.get_user_subscription[i]['combo_packages.package.subscriptions.start_date'];
                 var enddate = moment(results.get_user_subscription[i]['combo_packages.package.subscriptions.end_date'], 'YYYY-MM-DD hh:mm:ss').subtract(duration, 'day');
                 db.subscription.update(
                     {
-                        login_id:            results.get_active_sale.login_data_id,
-                        package_id:          results.get_user_subscription[i]['combo_packages.package_id'],
-                        customer_username:   username,
-                        user_username:       '',
-                        start_date:          startdate,
-                        end_date:            enddate
+                        login_id: results.get_active_sale.login_data_id,
+                        package_id: results.get_user_subscription[i]['combo_packages.package_id'],
+                        customer_username: username,
+                        user_username: '',
+                        start_date: startdate,
+                        end_date: enddate
                     },
-                    {where: {id: results.get_user_subscription[i]['combo_packages.package.subscriptions.id'], company_id: req.token.company_id}}
-                ).then(function(result){
+                    {
+                        where: {
+                            id: results.get_user_subscription[i]['combo_packages.package.subscriptions.id'],
+                            company_id: req.token.company_id
+                        }
+                    }
+                ).then(function (result) {
                     if (++updated == results.get_user_subscription.length) {
                         callback(null);
                     }
                     return null;
-                }).catch(function(error){
+                }).catch(function (error) {
                     winston.error("Annuling subscription failed with error: ", error);
                     response = {status: 400, message: 'Some packages could not be canceled'};
                     callback(null, response);
@@ -185,36 +177,35 @@ exports.annul = function(req, res) {
                 });
             }
         }],
-        deactivate_sale: ['get_user_subscription', 'get_active_sale', 'update_subscription', function(results, callback) {
+        deactivate_sale: ['get_user_subscription', 'get_active_sale', 'update_subscription', function (results, callback) {
             db.salesreport.update(
                 {
-                    user_id:            1,
-                    combo_id:           results.get_active_sale.combo_id,
-                    login_data_id:      results.get_active_sale.login_data_id,
-                    user_username:      username,
-                    distributorname:    '',
-                    saledate:           dateFormat(Date.now(), 'yyyy-mm-dd HH:MM:ss'),
-                    active:             false
+                    user_id: 1,
+                    combo_id: results.get_active_sale.combo_id,
+                    login_data_id: results.get_active_sale.login_data_id,
+                    user_username: username,
+                    distributorname: '',
+                    saledate: dateFormat(Date.now(), 'yyyy-mm-dd HH:MM:ss'),
+                    active: false
                 },
                 {where: {id: results.get_active_sale.id, company_id: req.token.company_id}}
-            ).then(function(result){
+            ).then(function (result) {
                 response = {status: 200, message: 'Sale annuled successfully'};
                 callback(null);
                 return null;
-            }).catch(function(error){
+            }).catch(function (error) {
                 winston.error("Setting sale as inactive failed at salesreport,  error: ", error);
                 response = {status: 400, message: 'Subscription canceled, could not annul sale record'}
                 callback(true, response);
             });
         }]
-    }, function(err, results) {
-        if(err) {
+    }, function (err, results) {
+        if (err) {
             winston.error("Annuling sale failed at salesreport,  error: ", err);
             return res.status(400).send({
                 message: 'Unable to annul this sale'
             });
-        }
-        else return res.status(response.status).send({ message: response.message });
+        } else return res.status(response.status).send({message: response.message});
     });
 
 
@@ -223,19 +214,18 @@ exports.annul = function(req, res) {
 /**
  * Delete
  */
-exports.delete = function(req, res) {
+exports.delete = function (req, res) {
     DBModel.destroy({
         where: {
             combo_id: req.body.combo_id,
             login_data_id: req.body.login_data_id, company_id: req.token.company_id
         }
     }).then(function (result) {
-        if(!result){
+        if (!result) {
             return res.status(400).send({
                 message: 'Unable to annul this sale'
             });
-        }
-        else{
+        } else {
             db.subscriptions.update({
                 where: {
                     combo_id: req.body.combo_id,
@@ -243,22 +233,21 @@ exports.delete = function(req, res) {
                     company_id: req.token.company_id
                 }
             }).then(function (result) {
-                if(!result){
+                if (!result) {
                     return res.status(400).send({
                         message: 'Unable to annul this sale'
                     });
-                }
-                else{
+                } else {
 
                 }
-            }).catch(function(error) {
-                winston.error("Error updating subscription at salesreport, error: ",error);
+            }).catch(function (error) {
+                winston.error("Error updating subscription at salesreport, error: ", error);
                 return res.status(400).send({
                     message: 'Unable to annul this sale'
                 });
             });
         }
-    }).catch(function(error) {
+    }).catch(function (error) {
         winston.error("Deleting sale failed with error: ", error);
         return res.status(400).send({
             message: 'Unable to annul this sale'
@@ -266,58 +255,60 @@ exports.delete = function(req, res) {
     });
 
     DBModel.destroy()
-    .then(function(result) {
-        if (result) {
-            if (result && (result.company_id === req.token.company_id)) {
-                result.destroy().then(function() {
-                    return res.json(result);
-                }).catch(function(err) {
-                    winston.error("Error deleting sales report, error: ",err);
-                    return res.status(400).send({ message: errorHandler.getErrorMessage(err) });
+        .then(function (result) {
+            if (result) {
+                if (result && (result.company_id === req.token.company_id)) {
+                    result.destroy().then(function () {
+                        return res.json(result);
+                    }).catch(function (err) {
+                        winston.error("Error deleting sales report, error: ", err);
+                        return res.status(400).send({message: errorHandler.getErrorMessage(err)});
+                    });
+                } else {
+                    return res.status(400).send({message: 'Unable to find the Data'});
+                }
+            } else {
+                return res.status(400).send({
+                    message: 'Unable to find the Data'
                 });
             }
-            else{
-                return res.status(400).send({message: 'Unable to find the Data'});
-            }
-        } else {
-            return res.status(400).send({
-                message: 'Unable to find the Data'
-            });
-        }
-    }).catch(function(err) {
+        }).catch(function (err) {
         winston.error("Error deleting sales report item, error:", err);
-        return res.status(400).send({ message: errorHandler.getErrorMessage(err) });
+        return res.status(400).send({message: errorHandler.getErrorMessage(err)});
     });
 };
 
 /**
  * List
  */
-exports.list = function(req, res) {
+exports.list = function (req, res) {
     //if a filter is left empty, query searches for like '%%' in case of strings and interval [0 - 3000] years for dates, ignoring the filter
     var qwhere = {},
         final_where = {},
         query = req.query;
     final_where.where = qwhere; //start building where
 
-    if(req.query.user_username) final_where.where.user_username = {like: '%'+req.query.user_username+'%'};
-    if(query.login_data_id) final_where.where.login_data_id = query.login_data_id;
-    if(req.query.name) final_where.where.combo_id = req.query.name;
-    var distributor_filter = (req.query.distributorname) ? {like: '%'+req.query.distributorname+'%'} : {like: '%%'};
+    if (req.query.user_username) final_where.where.user_username = {like: '%' + req.query.user_username + '%'};
+    if (query.login_data_id) final_where.where.login_data_id = query.login_data_id;
+    if (req.query.name) final_where.where.combo_id = req.query.name;
+    var distributor_filter = (req.query.distributorname) ? {like: '%' + req.query.distributorname + '%'} : {like: '%%'};
 
-    if(req.query.active === 'active') final_where.where.active = true;
-    if(req.query.active === 'cancelled') final_where.where.active = false;
+    if (req.query.active === 'active') final_where.where.active = true;
+    if (req.query.active === 'cancelled') final_where.where.active = false;
 
-    if(req.query.startsaledate) final_where.where.saledate = {gte:req.query.startsaledate};
-    if(req.query.endsaledate) final_where.where.saledate = {lte:req.query.endsaledate};
+    if (req.query.startsaledate) final_where.where.saledate = {gte: req.query.startsaledate};
+    if (req.query.endsaledate) final_where.where.saledate = {lte: req.query.endsaledate};
 
-    if((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {gte:req.query.startsaledate,lte:req.query.endsaledate};
+    if ((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {
+        gte: req.query.startsaledate,
+        lte: req.query.endsaledate
+    };
 
     //fetch records for specified page
-    if(parseInt(query._start)) final_where.offset = parseInt(query._start);
-    if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
+    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
+    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
 
     final_where.include = [
         {model: db.combo, required: true, attributes: ['name']},
@@ -328,42 +319,61 @@ exports.list = function(req, res) {
 
     DBModel.findAndCountAll(
         final_where
-    ).then(function(results) {
-        if (!results) {
-            return res.status(404).send({ message: 'No data found' });
-        } else {
-            res.setHeader("X-Total-Count", results.count);
-            res.json(results.rows);
-        }
-    }).catch(function(err) {
+    ).then(function (results) {
+             if (!results) {
+          return res.status(404).send({message: 'No data found'});
+      } else {
+                 res.setHeader("X-Total-Count", results.count);
+                 let arr = [];
+
+                 for (let i = 0; i < results.rows.length; i++) {
+
+                     let obj = results.rows[i].saledate;
+                     const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+                     let current_datetime = obj;
+                     let formatted_date = current_datetime.getDate() + "-" + months[current_datetime.getMonth()] + "-" + current_datetime.getFullYear()
+
+
+                     results.rows.saledate = formatted_date;
+                     let objdata = results.rows[i];
+                     objdata.dataValues.saledate = formatted_date;
+                     arr.push(objdata)
+                 }
+                 res.json(arr);
+      }
+
+    }).catch(function (err) {
         winston.error("Getting sale list failed with error: ", err);
         res.jsonp(err);
     });
 
 };
 
-exports.sales_by_product = function(req, res) {
+exports.sales_by_product = function (req, res) {
     var qwhere = {},
         final_where = {},
         query = req.query;
     final_where.where = qwhere; //start building where
 
-    if(req.query.name) final_where.where.combo_id = req.query.name;
-    if(req.query.active === 'active') final_where.where.active = true;
-    if(req.query.active === 'cancelled') final_where.where.active = false;
+    if (req.query.name) final_where.where.combo_id = req.query.name;
+    if (req.query.active === 'active') final_where.where.active = true;
+    if (req.query.active === 'cancelled') final_where.where.active = false;
 
-    if(req.query.startsaledate) final_where.where.saledate = {gte:req.query.startsaledate};
-    if(req.query.endsaledate) final_where.where.saledate = {lte:req.query.endsaledate};
+    if (req.query.startsaledate) final_where.where.saledate = {gte: req.query.startsaledate};
+    if (req.query.endsaledate) final_where.where.saledate = {lte: req.query.endsaledate};
 
-    if((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {gte:req.query.startsaledate,lte:req.query.endsaledate};
+    if ((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {
+        gte: req.query.startsaledate,
+        lt: req.query.endsaledate
+    };
 
     //fetch records for specified page
-    if(parseInt(query._start)) final_where.offset = parseInt(query._start);
-    if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
+    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
+    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
 
-    final_where.attributes = ['id', 'combo_id', [sequelize.fn('max', sequelize.col('saledate')), 'saledate'], 'createdAt', [sequelize.fn('count', sequelize.col('combo_id')), 'count']];
+    final_where.attributes = ['id', 'combo_id', [sequelize.fn('max', sequelize.col('saledate')), 'saledate'], 'createdAt', [sequelize.fn('count', sequelize.col('salesreport.id')), 'count']];
     final_where.include = [{model: db.combo, required: true, attributes: ['name', 'duration', 'value']}];
     final_where.group = ['combo_id'];
 
@@ -371,121 +381,135 @@ exports.sales_by_product = function(req, res) {
 
     DBModel.findAndCountAll(
         final_where
-    ).then(function(results) {
+    ).then(function (results) {
         if (!results) {
-            return res.status(404).send({ message: 'No data found' });
+            return res.status(404).send({message: 'No data found'});
         } else {
             res.setHeader("X-Total-Count", results.count.length);
             res.json(results.rows);
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         winston.error("Getting sales for each combo failed with error: ", err);
         res.jsonp(err);
     });
 
 };
 
-exports.sales_by_date = function(req, res) {
+exports.sales_by_date = function (req, res) {
     var qwhere = {},
         final_where = {},
         query = req.query;
     final_where.where = qwhere; //start building where
 
-    if(req.query.user_username) final_where.where.user_username = {like: '%'+req.query.user_username+'%'};
-    if(query.login_data_id) final_where.where.login_data_id = query.login_data_id;
-    if(req.query.distributorname) final_where.where.distributorname = {like: '%'+req.query.distributorname+'%'};
-    if(req.query.active === 'active') final_where.where.active = true;
-    if(req.query.active === 'cancelled') final_where.where.active = false;
+    if (req.query.user_username) final_where.where.user_username = {like: '%' + req.query.user_username + '%'};
+    if (query.login_data_id) final_where.where.login_data_id = query.login_data_id;
+    if (req.query.distributorname) final_where.where.distributorname = {like: '%' + req.query.distributorname + '%'};
+    if (req.query.active === 'active') final_where.where.active = true;
+    if (req.query.active === 'cancelled') final_where.where.active = false;
 
 
-    if(req.query.name) final_where.where.combo_id = req.query.name;
+    if (req.query.name) final_where.where.combo_id = req.query.name;
 
-    if(req.query.startsaledate) final_where.where.saledate = {gte:req.query.startsaledate};
-    if(req.query.endsaledate) final_where.where.saledate = {lte:req.query.endsaledate};
+    if (req.query.startsaledate) final_where.where.saledate = {gte: req.query.startsaledate};
+    if (req.query.endsaledate) final_where.where.saledate = {lte: req.query.endsaledate};
 
-    if((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {gte:req.query.startsaledate,lte:req.query.endsaledate};
+    if ((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {
+        gte: req.query.startsaledate,
+        lte: req.query.endsaledate
+    };
 
     //fetch records for specified page
 
-    if(parseInt(query._start)) final_where.offset = parseInt(query._start);
-    if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
+    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
     //sort by specified field and specified order, otherwise sort by sale date
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
     else final_where.order = [['saledate', 'DESC']];
 
     final_where.attributes = ['id', [sequelize.fn('DATE_FORMAT', sequelize.col('saledate'), "%Y-%m-%d"), 'saledate'], [sequelize.fn('count', sequelize.col('saledate')), 'count'], 'active'];
     final_where.group = [sequelize.fn('DATE', sequelize.col('saledate'))]; //group by date of sale (excluding time information)
 
-    final_where.include = [{model: db.combo, required: true, attributes: [[sequelize.fn('sum', sequelize.col('value')), 'total_value']]}];
+    final_where.include = [{
+        model: db.combo,
+        required: true,
+        attributes: [[sequelize.fn('sum', sequelize.col('combo.value')), 'total_value']]
+    }];
 
     final_where.where.company_id = req.token.company_id; //return only records for this company
 
     DBModel.findAndCountAll(
         final_where
-    ).then(function(results) {
+    ).then(function (results) {
         if (!results) {
-            return res.status(404).send({ message: 'No data found' });
+            return res.status(404).send({message: 'No data found'});
         } else {
             res.setHeader("X-Total-Count", results.count.length);
             res.json(results.rows);
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         winston.error("Getting sales for each day failed with error: ", err);
         res.jsonp(err);
     });
 
 };
 
-exports.sales_by_month = function(req, res) {
+exports.sales_by_month = function (req, res) {
     var qwhere = {},
         final_where = {},
         query = req.query;
     final_where.where = qwhere; //start building where
 
-    if(req.query.user_username) final_where.where.user_username = {like: '%'+req.query.user_username+'%'};
-    if(query.login_data_id) final_where.where.login_data_id = query.login_data_id;
-    var distributor_filter = (req.query.distributorname) ? {like: '%'+req.query.distributorname+'%'} : {like: '%%'};
+    if (req.query.user_username) final_where.where.user_username = {like: '%' + req.query.user_username + '%'};
+    if (query.login_data_id) final_where.where.login_data_id = query.login_data_id;
+    var distributor_filter = (req.query.distributorname) ? {like: '%' + req.query.distributorname + '%'} : {like: '%%'};
 
-    if(req.query.active === 'active') final_where.where.active = true;
-    if(req.query.active === 'cancelled') final_where.where.active = false;
+    if (req.query.active === 'active') final_where.where.active = true;
+    if (req.query.active === 'cancelled') final_where.where.active = false;
 
-    if(req.query.name) final_where.where.combo_id = req.query.name;
+    if (req.query.name) final_where.where.combo_id = req.query.name;
 
-    if(req.query.startsaledate) final_where.where.saledate = {gte:req.query.startsaledate};
-    if(req.query.endsaledate) final_where.where.saledate = {lte:req.query.endsaledate};
+    if (req.query.startsaledate) final_where.where.saledate = {gte: req.query.startsaledate};
+    if (req.query.endsaledate) final_where.where.saledate = {lte: req.query.endsaledate};
 
-    if((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {gte:req.query.startsaledate,lte:req.query.endsaledate};
+    if ((req.query.startsaledate) && (req.query.endsaledate)) final_where.where.saledate = {
+        gte: req.query.startsaledate,
+        lte: req.query.endsaledate
+    };
 
     //fetch records for specified page
-    if(parseInt(query._start)) final_where.offset = parseInt(query._start);
-    if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
+    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
+    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
 
     final_where.attributes = ['id', [sequelize.fn('DATE_FORMAT', sequelize.col('saledate'), "%Y-%m"), 'saledate'], [sequelize.fn('count', sequelize.col('saledate')), 'count']];
     final_where.group = [sequelize.fn('DATE_FORMAT', sequelize.col('saledate'), "%Y-%m")]; //group by month/year of sale (excluding day and time information)
 
-    final_where.include = [{model: db.combo, required: true, attributes: [[sequelize.fn('sum', sequelize.col('value')), 'total_value']]},
+    final_where.include = [{
+        model: db.combo,
+        required: true,
+        attributes: [[sequelize.fn('sum', sequelize.col('combo.value')), 'total_value']]
+    },
 
         {model: db.users, required: true, attributes: ['username'], where: {username: distributor_filter}}
-
 
 
     ];
 
     final_where.where.company_id = req.token.company_id; //return only records for this company
+    final_where.order = [['saledate', 'DESC']];
 
     DBModel.findAndCountAll(
         final_where
-    ).then(function(results) {
+    ).then(function (results) {
         if (!results) {
-            return res.status(404).send({ message: 'No data found' });
+            return res.status(404).send({message: 'No data found'});
         } else {
             res.setHeader("X-Total-Count", results.count.length);
             res.json(results.rows);
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         winston.error("Getting sales for each month failed with error: ", err);
         res.jsonp(err);
     });
@@ -508,37 +532,37 @@ exports.sales_by_month = function(req, res) {
  * @apiSuccess (200) {String} message Full list of number of subscriptions ending each month (ascending order)
  * @apiError (40x) {String} message Error message.
  */
-exports.sales_monthly_expiration = function(req, res) {
-    var expiration_frame = "WHERE `end_date` > NOW() and company_id = "+req.token.company_id+" ";
-    var limit = "LIMIT "+req.query._start+", "+req.query._end+" ";
+exports.sales_monthly_expiration = function (req, res) {
+    var expiration_frame = "WHERE `end_date` > NOW() and company_id = " + req.token.company_id + " ";
+    var limit = "LIMIT " + req.query._start + ", " + req.query._end + " ";
     var order = (req.query._orderDir) ? req.query._orderDir : "ASC";
 
-    var account_filter = (req.query.username) ? "INNER JOIN login_data on `subscription`.`login_id` = `login_data`.`id` AND `login_data`.`username` LIKE '%"+req.query.username+"%' " : "";
-    if (req.query.startsaledate) expiration_frame = expiration_frame+"AND `end_date` > DATE_FORMAT('"+req.query.startsaledate+"', '%Y-%m-01 00:00:00') ";
-    if (req.query.endsaledate) expiration_frame = expiration_frame+"AND `end_date` < DATE_FORMAT('"+req.query.endsaledate+"', '%Y-%m-01 00:00:00') ";
+    var account_filter = (req.query.username) ? "INNER JOIN login_data on `subscription`.`login_id` = `login_data`.`id` AND `login_data`.`username` LIKE '%" + req.query.username + "%' " : "";
+    if (req.query.startsaledate) expiration_frame = expiration_frame + "AND `end_date` > DATE_FORMAT('" + req.query.startsaledate + "', '%Y-%m-01 00:00:00') ";
+    if (req.query.endsaledate) expiration_frame = expiration_frame + "AND `end_date` < DATE_FORMAT('" + req.query.endsaledate + "', '%Y-%m-01 00:00:00') ";
 
-    var thequery = "SELECT subscription_expirations.id, count(subscription_expirations.login_id) as count, DATE_FORMAT(subscription_expirations.end_date, '%Y-%m')as enddate "+
-    "FROM ( "+
-        "SELECT `subscription`.`id`, `subscription`.`login_id`, max(`subscription`.`end_date`) AS `end_date` "+
-        "FROM `subscription` AS `subscription` "+
-        account_filter+
-        expiration_frame+
-        "GROUP BY `login_id` "+
-    ") as subscription_expirations "+
-    "GROUP BY enddate "+
-    "ORDER BY enddate "+order+" " +
-    limit+";";
+    var thequery = "SELECT subscription_expirations.id, count(subscription_expirations.login_id) as count, DATE_FORMAT(subscription_expirations.end_date, '%Y-%m')as enddate " +
+        "FROM ( " +
+        "SELECT `subscription`.`id`, `subscription`.`login_id`, max(`subscription`.`end_date`) AS `end_date` " +
+        "FROM `subscription` AS `subscription` " +
+        account_filter +
+        expiration_frame +
+        "GROUP BY `login_id` " +
+        ") as subscription_expirations " +
+        "GROUP BY enddate " +
+        "ORDER BY enddate " + order + " " +
+        limit + ";";
 
     sequelizes.sequelize.query(
         thequery
-    ).then(function(results){
+    ).then(function (results) {
         if (!results || !results[0]) {
-            return res.status(404).send({ message: 'No data found' });
+            return res.status(404).send({message: 'No data found'});
         } else {
             res.setHeader("X-Total-Count", results[0].length);
             res.json(results[0]);
         }
-    }).catch(function(error){
+    }).catch(function (error) {
         winston.error("Getting subscription expiring each month failed with error: ", error);
         res.jsonp(error);
     });
@@ -562,24 +586,29 @@ exports.sales_monthly_expiration = function(req, res) {
  * @apiSuccess (200) {String} message Full list of active subscriptions, sorted by their expiration date (descending order)
  * @apiError (40x) {String} message Error message.
  */
-exports.sales_by_expiration = function(req, res) {
+exports.sales_by_expiration = function (req, res) {
     var qwhere = {},
         final_where = {},
         query = req.query;
     final_where.where = qwhere; //start building where
 
-    var client_filter = (req.query.username) ? '%'+req.query.username+'%' : '%%';
-    var start = (req.query.startsaledate) ? (req.query.startsaledate+' 00:00:00') : sequelize.literal('CURDATE()');
-    if(req.query.next) var end = sequelize.literal('CURDATE() + INTERVAL '+req.query.next+' DAY');
-    else if(req.query.endsaledate) var end = req.query.endsaledate;
+    var client_filter = (req.query.username) ? '%' + req.query.username + '%' : '%%';
+    var start = (req.query.startsaledate) ? (req.query.startsaledate + ' 00:00:00') : sequelize.literal('CURDATE()');
+    if (req.query.next) var end = sequelize.literal('CURDATE() + INTERVAL ' + req.query.next + ' DAY');
+    else if (req.query.endsaledate) var end = req.query.endsaledate;
 
     final_where.where = (end) ? {end_date: {between: [start, end]}} : {end_date: {gte: start}};
 
-    if(parseInt(query._start)) final_where.offset = parseInt(query._start);
-    if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
+    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
     final_where.attributes = ['id', 'login_id', [sequelize.fn('max', sequelize.col('end_date')), 'end_date']];
-    final_where.include = [{model: db.login_data, required: true, attributes: ['username'], where: {username: {like: client_filter}}}]
+    final_where.include = [{
+        model: db.login_data,
+        required: true,
+        attributes: ['username'],
+        where: {username: {like: client_filter}}
+    }]
     final_where.group = ['login_id'];
     final_where.order = [['end_date', 'DESC']];
 
@@ -587,14 +616,14 @@ exports.sales_by_expiration = function(req, res) {
 
     db.subscription.findAndCountAll(
         final_where
-    ).then(function(results) {
+    ).then(function (results) {
         if (!results) {
-            return res.status(404).send({ message: 'No data found' });
+            return res.status(404).send({message: 'No data found'});
         } else {
             res.setHeader("X-Total-Count", results.count.length);
             res.json(results.rows);
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         winston.error("Getting subscriptions ordered by expiration failed with error: ", err);
         res.jsonp(err);
     });
@@ -604,22 +633,22 @@ exports.sales_by_expiration = function(req, res) {
 /**
  * Lastest
  */
-exports.latest = function(req, res) {
+exports.latest = function (req, res) {
 
     DBModel.findAndCountAll({
         offset: offset_start,
         limit: records_limit,
         include: [db.combo, db.users],
-        order: [['createdAt','ASC']],
+        order: [['createdAt', 'ASC']],
         where: {company_id: req.token.company_id}
-    }).then(function(results) {
+    }).then(function (results) {
         if (!results) {
-            return res.status(404).send({ message: 'No data found' });
+            return res.status(404).send({message: 'No data found'});
         } else {
             res.setHeader("X-Total-Count", results.count);
             res.json(results.rows);
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         winston.error("Getting most recent sales failed with error: ", err);
         res.jsonp(err);
     });
@@ -628,7 +657,7 @@ exports.latest = function(req, res) {
 /**
  * middleware
  */
-exports.dataByID = function(req, res, next, id) {
+exports.dataByID = function (req, res, next, id) {
 
     if ((id % 1 === 0) === false) { //check if it's integer
         return res.status(404).send({
@@ -636,9 +665,9 @@ exports.dataByID = function(req, res, next, id) {
         });
     }
     DBModel.find({
-        where: { id: id },
+        where: {id: id},
         //include: [{model: db.combo}, {model: db.users}]
-    }).then(function(result) {
+    }).then(function (result) {
         if (!result) {
             return res.status(404).send({
                 message: 'No data with that identifier has been found'
@@ -648,7 +677,7 @@ exports.dataByID = function(req, res, next, id) {
             next();
             return null;
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         winston.error("Getting data for specific sale failed with error: ", err);
         return next(err);
     });
@@ -656,29 +685,37 @@ exports.dataByID = function(req, res, next, id) {
 };
 
 
-
-exports.invoice = function(req, res) {
+exports.invoice = function (req, res) {
 
     var invoice_query = {};
     invoice_query.company_id = req.token.company_id;
-    if(req.query.login_data_id) invoice_query.id = req.query.login_data_id;
-    if(req.query.username) invoice_query.username = req.query.username;
+    if (req.query.login_data_id) invoice_query.id = req.query.login_data_id;
+    if (req.query.username) invoice_query.username = req.query.username;
 
-    if(!(Object.keys(invoice_query).length === 0 && invoice_query.constructor === Object)){
-        try{
+    if (!(Object.keys(invoice_query).length === 0 && invoice_query.constructor === Object)) {
+        try {
             db.login_data.findAll({
                 attributes: ['username', 'pin'],
                 where: invoice_query,
                 include: [
-                    {model: db.customer_data, attributes: ['firstname', 'lastname', 'email', 'address', 'country', 'telephone'], required: true},
-                    {model: db.salesreport, attributes: ['saledate'], where: {active: true}, required: true,
+                    {
+                        model: db.customer_data,
+                        attributes: ['firstname', 'lastname', 'email', 'address', 'country', 'telephone'],
+                        required: true
+                    },
+                    {
+                        model: db.salesreport, attributes: ['saledate'], where: {active: true}, required: true,
                         include: [
-                            {model: db.users, attributes: ['username'], required: true}, {model: db.combo, attributes: ['name'], required: true}
+                            {model: db.users, attributes: ['username'], required: true}, {
+                                model: db.combo,
+                                attributes: ['name'],
+                                required: true
+                            }
                         ]
                     }
                 ],
-                order: [ [ db.salesreport, 'saledate', 'DESC' ] ]
-            }).then(function(invoice) {
+                order: [[db.salesreport, 'saledate', 'DESC']]
+            }).then(function (invoice) {
                 if (!invoice) {
                     return res.status(404).send({
                         message: 'No sales found for this user'
@@ -702,16 +739,14 @@ exports.invoice = function(req, res) {
                     };
                     return res.send(invoice_data);
                 }
-            }).catch(function(error) {
+            }).catch(function (error) {
                 winston.error("Finding account to generate invoice failed with error: ", error);
                 res.send(error)
             });
+        } catch (error) {
+            winston.error("Error on operations with invoice sales reports, error: ", error)
         }
-        catch(error){
-            winston.error("Error on operations with invoice sales reports, error: ",error)
-        }
-    }
-    else {
+    } else {
         return res.status(404).send({
             message: 'Make sure your search parameters are correct'
         });
@@ -721,7 +756,7 @@ exports.invoice = function(req, res) {
 
 //download_invoice
 
-exports.download_invoice = function(req, res) {
+exports.download_invoice = function (req, res) {
 
     DBModel.findOne({
         attributes: ['saledate'],
@@ -730,9 +765,10 @@ exports.download_invoice = function(req, res) {
             {model: db.users, attributes: ['username'], required: true},
             {model: db.combo, attributes: ['name'], required: true},
             {
-                model: db.login_data, attributes: ['username','password','pin'], required: true,
+                model: db.login_data, attributes: ['username', 'password', 'pin'], required: true,
                 include: [
-                    {model: db.customer_data, required: true
+                    {
+                        model: db.customer_data, required: true
 
                     }
                 ]
@@ -745,17 +781,17 @@ exports.download_invoice = function(req, res) {
         } else {
 
             db.email_templates.findOne({
-            attributes:['title','content'],
-            where: {template_id: 'invoice-info'}
+                attributes: ['title', 'content'],
+                where: {template_id: 'invoice-info'}
 
-        }).then(function (result,err) {
+            }).then(function (result, err) {
 
                 var compiled = ejs.compile(fs.readFileSync('modules/mago/server/templates/salesreport-invoice.html', 'utf8'));
                 var images = req.app.locals.backendsettings[req.token.company_id].company_logo;
                 var url = req.app.locals.backendsettings[req.token.company_id].assets_url;
 
 
-                if(!result){
+                if (!result) {
 
                     //if no result found in Adm System
                     var html = compiled({
@@ -766,7 +802,7 @@ exports.download_invoice = function(req, res) {
                         info4: 'USA +1 646 630 8976',
                         info5: 'United Kingdom +44 203 740 4877',
                         info6: 'Australia +61 285 181 274',
-                        image: url+images,
+                        image: url + images,
                         username: results.login_datum.username,
                         pin: results.login_datum.pin,
                         password: 1234,
@@ -777,15 +813,18 @@ exports.download_invoice = function(req, res) {
                         country: results.login_datum.customer_datum.country,
                         telephone: results.login_datum.customer_datum.telephone,
                         user_type: 'Klient',
-                        saledate: dateFormat(results.saledate,'yyyy-mm-dd HH:MM:ss'),
+                        saledate: dateFormat(results.saledate, 'yyyy-mm-dd HH:MM:ss'),
                         product: results.combo.name,
                         distributorname: results.user.username,
                         sale_type: (results.length > 1) ? "Ri-abonim" : "Aktivizim",
                     });
-                    var options = { format: 'Letter'};
-                    var filename = 'Invoice for '+results.login_datum.username+req.params.invoiceID+'.pdf';
+                    var options = {format: 'Letter', phantomPath: phantomjs.path, timeout: '100000'};
+                    var filename = 'Invoice for ' + results.login_datum.username + req.params.invoiceID + '.pdf';
 
-                    pdf.create(html, options).toFile('./public/tmp/'+filename, function(err,pdfres) {
+                    pdf.create(html, options).toFile('./public/tmp/' + filename, function (err, pdfres) {
+                        if (err) {
+                            return winston.error("There was a error creating the pdf", err);
+                        }
                         res.setHeader('x-filename', filename);
                         res.sendFile(pdfres.filename);
                     });
@@ -806,7 +845,7 @@ exports.download_invoice = function(req, res) {
                         info4: array_info[4],
                         info5: array_info[5],
                         info6: array_info[6],
-                        image: url+images,
+                        image: url + images,
                         username: results.login_datum.username,
                         pin: results.login_datum.pin,
                         password: 1234,
@@ -817,15 +856,19 @@ exports.download_invoice = function(req, res) {
                         country: results.login_datum.customer_datum.country,
                         telephone: results.login_datum.customer_datum.telephone,
                         user_type: 'Klient',
-                        saledate: dateFormat(results.saledate,'yyyy-mm-dd HH:MM:ss'),
+                        saledate: dateFormat(results.saledate, 'yyyy-mm-dd HH:MM:ss'),
                         product: results.combo.name,
                         distributorname: results.user.username,
                         sale_type: (results.length > 1) ? "Ri-abonim" : "Aktivizim",
                     });
-                    var options = { format: 'Letter'};
-                    var filename = 'Invoice for '+results.login_datum.username+req.params.invoiceID+'.pdf';
+                    var options = {format: 'Letter', timeout: '100000', phantomPath: phantomjs.path};
+                    var filename = 'Invoice for ' + results.login_datum.username + req.params.invoiceID + '.pdf';
 
-                    pdf.create(html, options).toFile('./public/tmp/'+filename, function(err,pdfres) {
+                    pdf.create(html, options).toFile('./public/tmp/' + filename, function (err, pdfres) {
+                        if (err) {
+                            return winston.error("There was a error creating the pdf", err);
+                        }
+
                         res.setHeader('x-filename', filename);
                         res.sendFile(pdfres.filename);
                     });

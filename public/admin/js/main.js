@@ -416,7 +416,7 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
                 return items.map(item => {
                     return {
                         x: item.to_date,
-                        y: item.total,
+                        y: item.total
                     }
                 })
             };
@@ -431,8 +431,12 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
             const res = response.data ? response.data : response;
 
             $scope.options3 = {
+                style:'bar',
+                barChart: {width:20, align:'center'}, // align: left, center, right
                 drawPoints: {
-                    style: 'circle' // square, circle
+                    onRender: function(item, group, grap2d) {
+                        return item.label != null;
+                    }
                 },
                 shaded: {
                     orientation: 'bottom' // top, bottom
@@ -441,9 +445,9 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
                     icons: true
                 },
                 orientation: 'top',
-                start: res.length !== 0 ? res[0].date : new Date().toISOString(),
-                end: res.length !== 0 ? res[res.length - 1].date : new Date().setDate(
-                  new Date().getDate() + 31
+                start: (res && res.length !== 0) ? res[0].date : new Date().toISOString(),
+                end: (res && res.length !== 0) ? res[res.length - 1].date : new Date().setDate(
+                  new Date().getDate() - 720
                 ),
                 zoomable: false
             };
@@ -453,7 +457,13 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
                     return {
                         x: new Date(item.date),
                         y: item.total,
-                        group: 2
+                        group: 2,
+                        label: {
+                            content: item.total,
+                            className: "graph-blue",
+                            xOffset: 0,
+                            yOffset: -7
+                        }
                     }
                 })
             };
@@ -624,9 +634,9 @@ myApp.directive('roles', require('./smsbatch/user_roles_button'));
 myApp.directive('allowMenu', require('./groups/allowMenu'));
 myApp.directive('invite', require('./smsbatch/invite'));
 myApp.directive('approveInvitation', require('./smsbatch/approveInvitation'));
+myApp.directive('cancelSubscription', require('./smsbatch/cancelSubscription'));
 myApp.directive('importchannelLogs', require('./import_channels_csv_m3u/see_logs_import_channel'));
 myApp.directive('importvodLogs', require('./import_vod_csv/see_logs_import_vod'));
-myApp.directive('expiration_graphs', require('./sales_by_expiration/expiration_graph.html'));
 
 //myApp.directive('roles', require('./grouprights/radioRoles'));
 
@@ -635,11 +645,9 @@ myApp.directive('expiration_graphs', require('./sales_by_expiration/expiration_g
 myApp.config(['$stateProvider', require('./personal-details/user-details')]);
 myApp.config(['$stateProvider', require('./geoip/geoip')]);
 myApp.config(['$stateProvider', require('./support/support')]);
-myApp.config(['$stateProvider', require('./serverStatus/serverStatus')]);
 myApp.config(['$stateProvider', require('./change-pass/change-password')]);
 myApp.config(['$stateProvider', require('./epgData/epgchart')]);
 myApp.config(['$stateProvider', require('./activeDevicesChart/activeDevices')]);
-myApp.config(['$stateProvider', require('./sales_by_expiration/salesByExpiration')]);
 myApp.config(['$stateProvider', require('./advanced_settings/advancedSettings')]);
 
 myApp.config(['NgAdminConfigurationProvider', function (nga) {
@@ -685,6 +693,7 @@ myApp.config(['NgAdminConfigurationProvider', function (nga) {
     admin.addEntity(nga.entity('Settings'));
     admin.addEntity(nga.entity('EmailSettings'));
     admin.addEntity(nga.entity('URL'));
+    admin.addEntity(nga.entity('Webhooks'));
     admin.addEntity(nga.entity('ApiKeys'));
     admin.addEntity(nga.entity('ImagesSettings'));
     admin.addEntity(nga.entity('PlayerSettings'));
@@ -728,7 +737,6 @@ myApp.config(['NgAdminConfigurationProvider', function (nga) {
     admin.addEntity(nga.entity('import_channel'));
     admin.addEntity(nga.entity('import_vod'));
     admin.addEntity(nga.entity('subtitlesImport'));
-    admin.addEntity(nga.entity('reports/expiresubscription'));
 
     admin.addEntity(nga.entity('assetsMaster'));
     admin.addEntity(nga.entity('assetsCategory'));
@@ -761,6 +769,7 @@ myApp.config(['NgAdminConfigurationProvider', function (nga) {
     require('./settings/ImagesSettings/config')(nga, admin);
     require('./settings/ApiKeys/config')(nga, admin);
     require('./settings/URL/config')(nga, admin);
+
     require('./settings/EmailSettings/config')(nga, admin);
     require('./search_customers_resellers/config')(nga, admin);
     require('./mysubscription_resellers/config')(nga, admin);
@@ -807,6 +816,7 @@ myApp.config(['NgAdminConfigurationProvider', function (nga) {
     require('./logs/config')(nga, admin);
     require('./activit/config')(nga, admin);
     require('./appgroup/config')(nga, admin);
+    require('./Webhooks/config')(nga, admin);
     require('./vod/config')(nga, admin);
     require('./vodCategory/config')(nga, admin);
     require('./vodStream/config')(nga, admin);

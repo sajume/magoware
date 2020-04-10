@@ -60,7 +60,8 @@ export default function (nga, admin) {
                     { value: 3, label: 'IOS' },
                     { value: 4, label: 'Android Smart TV' },
                     { value: 5, label: 'Samsung Smart TV' },
-                    { value: 6, label: 'Apple TV' }
+                    { value: 6, label: 'Apple TV' },
+                    {value: 7, label: 'Web Smart TV'}
                 ])
                 .validation({required: true})
                 .label('Applications IDs'),

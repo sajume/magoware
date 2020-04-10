@@ -1,4 +1,3 @@
-import exp_graph from './expiration_graph.html'
 
 export default function(nga, admin) {
   var salesreport = admin.getEntity('sales_by_expiration')

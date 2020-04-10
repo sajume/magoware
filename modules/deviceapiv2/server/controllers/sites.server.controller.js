@@ -342,13 +342,19 @@ exports.confirmNewAccountToken = function (req, res) {
 					});
 
 					// Insert Into SalesData
+
+                    var transaction_id = crypto.randomBytes(Math.ceil(64)).toString('hex').slice(0, 24) + "==";
+                    var on_behalf_id = Math.floor(100000 + Math.random() * 900000)
 					var sData = {
 						user_id: 1,
 						user_username: loginData.username,
 						login_data_id: loginData.id,
 						distributorname: 'admin',
 						saledate: new Date(),
-						combo_id: combo.id
+						combo_id: combo.id,
+                        transaction_id : transaction_id,
+                        on_behalf_id : on_behalf_id
+
 					};
 					SalesData.create(sData)
 						.then(function (salesData) {

@@ -27,7 +27,7 @@ module.exports = function(sequelize, DataTypes) {
             allowNull: true
         },
         title: {
-            type: DataTypes.STRING(45),
+            type: DataTypes.STRING(100),
             allowNull: true
         },
         episode_title: {
@@ -69,7 +69,37 @@ module.exports = function(sequelize, DataTypes) {
         duration_seconds: {
             type: DataTypes.INTEGER(11),
             allowNull: false
-        }
+        },
+        livestream : {
+            type: DataTypes.BOOLEAN,
+            allowNull: true,
+            defaultValue: false
+            },
+            genre : {
+                type: DataTypes.TEXT,
+                allowNull: true
+            },
+            audio : {
+                type: DataTypes.TEXT,
+                allowNull: true
+            },
+            rating_score : {
+                type: DataTypes.INTEGER(11),
+                allowNull: true
+            },
+            parental_control : {
+                type: DataTypes.BOOLEAN,
+                allowNull: true
+            },
+            content_rating : {
+                type: DataTypes.STRING(45),
+                allowNull: true
+            },
+            banner_url : {
+                type: DataTypes.STRING(10),
+                allowNull: true
+            }
+
     },
         {
         tableName: 'epg_data',

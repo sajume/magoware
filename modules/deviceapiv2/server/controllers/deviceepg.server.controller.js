@@ -13,6 +13,37 @@ var path = require('path'),
     querystring = require('querystring');
 
 
+exports.forwardPostEpgEventsToGet = function(req, res) {
+    //Add to url so cache use it
+    req.originalUrl += '?channelNumber=' + req.body.channelNumber;
+    let timezone = '0';
+    if (req.body.device_timezone) {
+        timezone = req.body.device_timezone;
+    }
+
+    req.query = {
+        channelNumber: req.body.channelNumber,
+        device_timezone: timezone
+    }
+
+    req.method = 'get';
+
+    req.app.handle(req, res);
+}
+
+exports.attachTimezoneToUrl = function(req, res, next) {
+    let timezone = '0';
+    if (req.query.device_timezone) {
+        timezone = req.query.device_timezone;
+        req.authParams.device_timezone = timezone;
+    }
+    else if (req.authParams.device_timezone) {
+        timezone = req.authParams.device_timezone.replace(/ /g, '');
+    }
+    req.originalUrl += '&device_timezone=' + timezone;
+    next();
+}
+
 //RETURNS 12 hours of future Epg for a given channel
 /**
  * @api {POST} /apiv2/channels/event Channels - 12 hour epg
@@ -206,6 +237,9 @@ exports.event_get = function (req, res) {
     attributes: ['title'],
     where: {channel_number: channelNumber, company_id: req.thisuser.company_id}
   }).then(function (thischannel) {
+    if(!thischannel) {
+      return response.send_res(req, res, [], 706, -1, 'CHANNEL_NOT_FOUND', 'CHANNEL_NOT_FOUND', 'no-store');
+    }
     if (thischannel) channel_title = thischannel.title;
     models.my_channels.findOne({
       attributes: ['title'],
@@ -345,14 +379,9 @@ exports.event_get = function (req, res) {
  */
 exports.get_event =  function(req, res) {
     let timezone = '0';
-    if (req.headers.auth) {
-        let authEncoded = decodeURIComponent(req.headers.auth).replace(/[{}]/g, '')
-        let authParams = querystring.parse(authEncoded, ",", "=");
-        if (authParams[' device_timezone']) {
-            timezone = authParams[' device_timezone']
-        }
-        else if (authParams['device_timezone']) {
-            timezone = authParams['device_timezone']
+    if (req.authParams) {
+        if (req.authParams['device_timezone']) {
+            timezone = req.authParams['device_timezone'];
         }
     }
     timezone = timezone.replace(/ /g, '');
@@ -368,7 +397,7 @@ exports.get_event =  function(req, res) {
         where: { company_id: companyId, channel_number: channelNumber }
     }).then(function (channel) {
         if (!channel) {
-            response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+            response.send_res(req, res, [], 706, -1, 'CHANNEL_NOT_FOUND', 'CHANNEL_NOT_FOUND', 'no-store');
             return
         }
 
@@ -532,7 +561,7 @@ exports.get_event =  function(req, res) {
  */
 exports.current_epgs =  function(req, res) {
   const server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
-  const device_timezone = req.body.device_timezone;
+  const device_timezone = parseInt(req.query.device_timezone) || parseInt(req.auth_obj.device_timezone);
   let raw_result = [];
 
   let qwhere = {};
@@ -564,6 +593,11 @@ exports.current_epgs =  function(req, res) {
     order: [['channel_number', 'ASC']],
     where: qwhere,
     include: [
+      { model: models.genre, 
+        required: true, 
+        attributes: [], 
+        where: {is_available: true} 
+       },
       {
         model: models.packages_channels,
         required: true,
@@ -672,12 +706,12 @@ exports.current_epgs =  function(req, res) {
  */
 exports.get_current_epgs = function (req, res) {
   const server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
-  const device_timezone = req.query.device_timezone || req.auth_obj.device_timezone;
+  const device_timezone = parseInt(req.query.device_timezone) || parseInt(req.auth_obj.device_timezone);
 
   let raw_result = [];
 
   let qwhere = {};
-  if (req.thisuser.show_adult === 0) qwhere.pin_protected = 0; //show adults filter
+  if (req.thisuser.show_adult == 0) qwhere.pin_protected = 0; //show adults filter
   else qwhere.pin_protected !== ''; //avoid adult filter
   qwhere.company_id = req.thisuser.company_id;
   qwhere.isavailable = true;
@@ -705,6 +739,11 @@ exports.get_current_epgs = function (req, res) {
     order: [['channel_number', 'ASC']],
     where: qwhere,
     include: [
+      { model: models.genre, 
+        required: true, 
+        attributes: [], 
+        where: {is_available: true} 
+      },
       {
         model: models.packages_channels,
         required: true,

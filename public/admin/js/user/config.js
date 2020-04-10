@@ -17,6 +17,12 @@ export default function (nga, admin) {
 					.attributes({ placeholder: 'Choose company from dropdown list' })
 					.perPage(-1)
 					.label('Company'),
+            nga.field('firstname')
+                .map(function (value, entry) {
+                    return entry['firstname'] + ' ' + entry['lastname'];
+                })
+                .isDetailLink(false)
+                .label('User'),,
 			nga.field('username', 'string')
 				.label('Username'),
 			nga.field('email', 'email')
@@ -128,7 +134,7 @@ export default function (nga, admin) {
 					.attributes({ placeholder: 'Select group' })
 					.label('Group *'),
 			nga.field('username', 'string')
-					.attributes({ placeholder: 'Username must be at least 3 character long' , readOnly: true })
+					.attributes({ placeholder: 'Username must be at least 3 character long'})
 					.validation({ required: true, minlength: 3 })
 					.label('Username'),
 			nga.field('hashedpassword', 'password')
@@ -139,6 +145,14 @@ export default function (nga, admin) {
 					.attributes({ placeholder: 'Email' })
 					.validation({ required: true })
 					.label('Email'),
+            nga.field('firstname', 'string')
+                .attributes({ placeholder: 'Firstname' })
+                .validation({ required: true })
+                .label('Firstname'),
+            nga.field('lastname', 'string')
+                .attributes({ placeholder: 'Lastname' })
+                .validation({ required: true })
+                .label('Lastname'),
 			nga.field('telephone', 'string')
 					.attributes({ placeholder: 'Telephone' })
 					.validation({ required: true })

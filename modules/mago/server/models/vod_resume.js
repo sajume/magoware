@@ -24,7 +24,8 @@ module.exports = function(sequelize, DataTypes) {
         },
         resume_position: { //range should be [0-100]%
             type: DataTypes.INTEGER(11),
-            allowNull: false
+            allowNull: false,
+            defaultValue: 0
         },
         reaction: { //value set should be [-1, 0, 1]
             type: DataTypes.INTEGER(11),
@@ -39,6 +40,21 @@ module.exports = function(sequelize, DataTypes) {
         device_id: {
             type: DataTypes.STRING,
             allowNull: false
+        },
+        favorite: { //value set should be [0, 1]
+            type: DataTypes.INTEGER(11),
+            allowNull: true,
+            defaultValue: 0
+        },
+        vod_type: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            defaultValue: 'film'
+        },
+        percentage_position: { //value set should be [0.00, 100.00]
+            type: DataTypes.DECIMAL(5,2),
+            allowNull: true,
+            defaultValue: 0
         }
     }, {
         tableName: 'vod_resume',

@@ -15,6 +15,9 @@ const config = {
         ],
         ip_whitelist: [
             "127.0.0.1"
+        ],
+        route_whitelist: [
+            '/apiv2/events/event'
         ]
     }
 }

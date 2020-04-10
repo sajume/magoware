@@ -8,15 +8,25 @@ var path = require('path'),
     logHandler = require(path.resolve('./modules/mago/server/controllers/logs.server.controller')),
     winston = require('winston'),
     db = require(path.resolve('./config/lib/sequelize')).models,
+    url = require('url'),
     DBModel = db.vod_menu_carousel;
 
 /**
  * Create
  */
 exports.create = function(req, res) {
+    let carousel_url = '';
+    if(req.body.category_id === null || req.body.category_id === '') {
+        carousel_url = req.body.url + '?' + 'pin_protected=' + req.body.pin_protected + '&' + 'adult_content=' + req.body.adult_content+ '&' + 'order_by=' +req.body.order_by+ '&' +'order_dir=' + req.body.order_dir;
+    }
+    else {
+        carousel_url = req.body.url+ '?' +'category_id=' + req.body.category_id + '&'+ 'pin_protected='+req.body.pin_protected+ '&'+ 'adult_content=' +req.body.adult_content+ '&' + 'order_by=' +req.body.order_by+ '&' +'order_dir=' +req.body.order_dir;
 
+    }
+    req.body.url = carousel_url;
     req.body.company_id = req.token.company_id; //save record for this company
     DBModel.create(req.body, {logging: console.log}).then(function(result) {
+
         if (!result) {
             winston.error("Failed creating vod_menu");
             return res.status(400).send({message: 'fail create data'});
@@ -37,7 +47,9 @@ exports.create = function(req, res) {
  * Show current
  */
 exports.read = function(req, res) {
-    if(req.vodmenucarousel.company_id === req.token.company_id) res.json(req.vodmenucarousel);
+    var readData = req.vodmenucarousel;
+    if(readData.company_id === req.token.company_id)
+        res.json(readData)
     else return res.status(404).send({message: 'No data with that identifier has been found'});
 };
 
@@ -47,7 +59,22 @@ exports.read = function(req, res) {
 exports.update = function(req, res) {
     var updateData = req.vodmenucarousel;
 
-    if(req.vodmenucarousel.company_id === req.token.company_id){
+   let carousel_url = '';
+    if(req.body.category_id === null || req.body.category_id === '') {
+        carousel_url = req.body.url + '?' + 'pin_protected=' + req.body.pin_protected + '&' + 'adult_content=' + req.body.adult_content+ '&' + 'order_by=' +req.body.order_by+ '&' +'order_dir=' + req.body.order_dir;
+    }
+    else {
+        carousel_url = req.body.url+ '?' +'category_id=' + req.body.category_id + '&'+ 'pin_protected='+req.body.pin_protected+ '&'+ 'adult_content=' +req.body.adult_content+ '&' + 'order_by=' +req.body.order_by+ '&' +'order_dir=' +req.body.order_dir;
+
+    }
+    req.body.url = carousel_url;
+
+
+    let carousel_params = url.parse(updateData.dataValues.url, true)
+    var qdata = carousel_params.query;
+    updateData.dataValues = Object.assign(updateData.dataValues,qdata);
+
+    if(updateData.company_id === req.token.company_id){
         updateData.updateAttributes(req.body).then(function(result) {
             logHandler.add_log(req.token.id, req.ip.replace('::ffff:', ''), 'created', JSON.stringify(req.body), req.token.company_id);
             res.json(result);
@@ -105,8 +132,8 @@ exports.delete = function(req, res) {
 exports.list = function (req, res) {
 
     let qwhere = {},
-      final_where = {},
-      query = req.query;
+        final_where = {},
+        query = req.query;
 
     //start building where
     final_where.where = qwhere;
@@ -156,12 +183,20 @@ exports.dataByID = function(req, res, next, id) {
         },
         include: []
     }).then(function(result) {
+        let carousel_params = url.parse(result.dataValues.url, true)
+        var qdata = carousel_params.query;
+        result.dataValues = Object.assign(result.dataValues,qdata);
+
+        result.dataValues.url=carousel_params.pathname;
+
         if (!result) {
             return res.status(404).send({
                 message: 'No data with that identifier has been found'
             });
         } else {
             req.vodmenucarousel = result;
+            result.dataValues.pin_protected = result.dataValues.pin_protected == 'true';
+            result.dataValues.adult_content = result.dataValues.adult_content == 'true';
             next();
             return null;
         }

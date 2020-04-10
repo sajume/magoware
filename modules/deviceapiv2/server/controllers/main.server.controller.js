@@ -24,22 +24,20 @@ var push_functions = require(path.resolve('./custom_functions/push_messages'));
  * auth=gPIfKkbN63B8ZkBWj+AjRNTfyLAsjpRdRU7JbdUUeBlk5Dw8DIJOoD+DGTDXBXaFji60z3ao66Qi6iDpGxAz0uyvIj/Lwjxw2Aq7J0w4C9hgXM9pSHD4UF7cQoKgJI/D
  */
 exports.device_menu = function (req, res) {
-  var thisresponse = new response.OK();
-
-  var get_guest_menus = (req.auth_obj.username === 'guest' && req.app.locals.backendsettings[req.thisuser.company_id].allow_guest_login === true) ? true : false;
+  var get_guest_menus = (req.authParams.auth.username === 'guest' && req.app.locals.backendsettings[req.authParams.companyId].allow_guest_login === true) ? true : false;
   models.device_menu.findAll({
-    attributes: ['id', 'title', 'url', 'icon_url', [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon'],
+    attributes: ['id', 'title', 'url', 'icon_url', [db.sequelize.fn('concat', req.app.locals.backendsettings[req.authParams.companyId].assets_url, db.sequelize.col('icon_url')), 'icon'],
       'menu_code', 'position', [db.sequelize.fn('concat', "", db.sequelize.col('menu_code')), 'menucode']],
     where: {
-      appid: {$like: '%' + req.auth_obj.appid + '%'},
+      appid: {$like: '%' + req.authParams.auth.appid + '%'},
       isavailable: true,
       is_guest_menu: get_guest_menus,
-      company_id: req.thisuser.company_id
+      company_id: req.authParams.companyId
     },
     order: [['position', 'ASC']]
   }).then(function (result) {
     for (var i = 0; i < result.length; i++) {
-      result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i].icon_url;
+      result[i].icon_url = req.app.locals.backendsettings[req.authParams.companyId].assets_url + result[i].icon_url;
     }
     response.send_res(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
   }).catch(function (error) {
@@ -64,20 +62,20 @@ exports.device_menu = function (req, res) {
 
 exports.device_menu_get = function (req, res) {
 
-  var get_guest_menus = (req.auth_obj.username === 'guest' && req.app.locals.backendsettings[req.thisuser.company_id].allow_guest_login === true) ? true : false;
+  var get_guest_menus = (req.authParams.auth.username === 'guest' && req.app.locals.backendsettings[req.authParams.companyId].allow_guest_login === true) ? true : false;
   models.device_menu.findAll({
-    attributes: ['id', 'title', 'url', 'icon_url', [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon'],
+    attributes: ['id', 'title', 'url', 'icon_url', [db.sequelize.fn('concat', req.app.locals.backendsettings[req.authParams.companyId].assets_url, db.sequelize.col('icon_url')), 'icon'],
       'menu_code', 'position', ['menu_code', 'menucode']],
     where: {
-      appid: {$like: '%' + req.auth_obj.appid + '%'},
+      appid: {$like: '%' + req.authParams.auth.appid + '%'},
       isavailable: true,
       is_guest_menu: get_guest_menus,
-      company_id: req.thisuser.company_id
+      company_id: req.authParams.companyId
     },
     order: [['position', 'ASC']]
   }).then(function (result) {
     for (var i = 0; i < result.length; i++) {
-      result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i].icon_url;
+      result[i].icon_url = req.app.locals.backendsettings[req.authParams.companyId].assets_url + result[i].icon_url;
     }
 
     response.send_res_get(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
@@ -100,17 +98,17 @@ exports.device_menu_get = function (req, res) {
  */
 exports.get_devicemenu_levelone = function (req, res) {
 
-  var get_guest_menus = (req.auth_obj.username === 'guest' && req.app.locals.backendsettings[req.thisuser.company_id].allow_guest_login === true) ? true : false;
+  var get_guest_menus = (req.authParams.auth.username === 'guest' && req.app.locals.backendsettings[req.authParams.companyId].allow_guest_login === true) ? true : false;
   models.device_menu.findAll({
     attributes: ['id', 'title', 'url',
-      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon'],
-      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon_url'],
+      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.authParams.companyId].assets_url, db.sequelize.col('icon_url')), 'icon'],
+      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.authParams.companyId].assets_url, db.sequelize.col('icon_url')), 'icon_url'],
       'menu_code', 'position', 'parent_id', 'menu_description', ['menu_code', 'menucode']],
     where: {
-      appid: {$like: '%' + req.auth_obj.appid + '%'},
+      appid: {$like: '%' + req.authParams.auth.appid + '%'},
       isavailable: true,
       is_guest_menu: get_guest_menus,
-      company_id: req.thisuser.company_id
+      company_id: req.authParams.companyId
     },
     order: [['position', 'ASC']]
   }).then(function (result) {
@@ -140,10 +138,10 @@ exports.get_devicemenu_leveltwo = function (req, res) {
 
   models.device_menu_level2.findAll({
     attributes: ['id', 'title', 'url',
-      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon'],
-      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon_url'],
+      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.authParams.companyId].assets_url, db.sequelize.col('icon_url')), 'icon'],
+      [db.sequelize.fn('concat', req.app.locals.backendsettings[req.authParams.companyId].assets_url, db.sequelize.col('icon_url')), 'icon_url'],
       'menu_code', 'position', 'parent_id', 'menu_description', ['menu_code', 'menucode']],
-    where: {appid: {$like: '%' + req.auth_obj.appid + '%'}, isavailable: true, company_id: req.thisuser.company_id},
+    where: {appid: {$like: '%' + req.authParams.auth.appid + '%'}, isavailable: true, company_id: req.authParams.companyId},
     order: [['position', 'ASC']]
   }).then(function (result) {
 

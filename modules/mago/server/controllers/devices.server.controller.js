@@ -3,25 +3,27 @@
 /**
  * Module dependencies.
  */
-var path = require('path'),
+const path = require('path'),
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
-    winston = require('winston'),
-    db = require(path.resolve('./config/lib/sequelize')).models,
-    DBModel = db.devices;
+  winston = require('winston'),
+  db = require(path.resolve('./config/lib/sequelize')).models,
+  DBModel = db.devices;
+
+const Reader = require('@maxmind/geoip2-node').Reader;
 
 /**
  * Create
  */
-exports.create = function(req, res) {
+exports.create = function (req, res) {
   req.body.company_id = req.token.company_id; //save record for this company
 
-  DBModel.create(req.body).then(function(result) {
+  DBModel.create(req.body).then(function (result) {
     if (!result) {
       return res.status(400).send({message: 'fail create data'});
     } else {
       return res.jsonp(result);
     }
-  }).catch(function(err) {
+  }).catch(function (err) {
     winston.error("Adding device failed with error: ", err);
     return res.status(400).send({
       message: errorHandler.getErrorMessage(err)
@@ -32,30 +34,29 @@ exports.create = function(req, res) {
 /**
  * Show current
  */
-exports.read = function(req, res) {
-  if(req.genre.company_id === req.token.company_id) res.json(req.genre);
+exports.read = function (req, res) {
+  if (req.genre.company_id === req.token.company_id) res.json(req.genre);
   else return res.status(404).send({message: 'No data with that identifier has been found'});
 };
 
 /**
  * Update
  */
-exports.update = function(req, res) {
+exports.update = function (req, res) {
   var updateData = req.genre;
 
-  if(req.genre.company_id === req.token.company_id){
-    updateData.updateAttributes(req.body).then(function(result) {
+  if (req.genre.company_id === req.token.company_id) {
+    updateData.updateAttributes(req.body).then(function (result) {
       res.json(result);
       return null;
-    }).catch(function(err) {
+    }).catch(function (err) {
       winston.error("Updating device failed with error: ", err);
       res.status(400).send({
         message: errorHandler.getErrorMessage(err)
       });
       return null;
     });
-  }
-  else{
+  } else {
     res.status(404).send({message: 'User not authorized to access these data'});
   }
 
@@ -65,22 +66,21 @@ exports.update = function(req, res) {
 /**
  * Delete
  */
-exports.delete = function(req, res) {
+exports.delete = function (req, res) {
   var deleteData = req.genre;
 
-  DBModel.findById(deleteData.id).then(function(result) {
+  DBModel.findById(deleteData.id).then(function (result) {
     if (result) {
       if (result && (result.company_id === req.token.company_id)) {
-        result.destroy().then(function() {
+        result.destroy().then(function () {
           return res.json(result);
-        }).catch(function(err) {
+        }).catch(function (err) {
           winston.error("Deleting device failed with error: ", err);
           return res.status(400).send({
             message: errorHandler.getErrorMessage(err)
           });
         });
-      }
-      else{
+      } else {
         return res.status(400).send({message: 'Unable to find the Data'});
       }
     } else {
@@ -89,7 +89,7 @@ exports.delete = function(req, res) {
       });
     }
     return null;
-  }).catch(function(err) {
+  }).catch(function (err) {
     winston.error("Finding device failed with error: ", err);
     return res.status(400).send({
       message: errorHandler.getErrorMessage(err)
@@ -101,79 +101,80 @@ exports.delete = function(req, res) {
 /**
  * List
  */
-exports.list = function(req, res) {
+exports.list = function (req, res) {
 
-    var qwhere = {},
-        final_where = {},
-        query = req.query;
+  var qwhere = {},
+    final_where = {},
+    query = req.query;
 
-    const company_id = req.get('company_id') || 1;
+  const company_id = req.token.company_id || 1;
 
-    if (query.q) {
-        qwhere.$or = {};
-        qwhere.$or.username = {};
-        qwhere.$or.username.$like = '%' + query.q + '%';
-        qwhere.$or.device_id = {};
-        qwhere.$or.device_id.$like = '%' + query.q + '%';
-        qwhere.$or.device_ip = {};
-        qwhere.$or.device_ip.$like = '%' + query.q + '%';
-        qwhere.$or.device_brand = {};
-        qwhere.$or.device_brand.$like = '%' + query.q + '%';
-        qwhere.$or.device_mac_address = {};
-        qwhere.$or.device_mac_address.$like = '%' + query.q + '%';
-        qwhere.$or.os = {};
-        qwhere.$or.os.$like = '%' + query.q + '%';
+  if (query.q) {
+    qwhere.$or = {};
+    qwhere.$or.username = {};
+    qwhere.$or.username.$like = '%' + query.q + '%';
+    qwhere.$or.device_id = {};
+    qwhere.$or.device_id.$like = '%' + query.q + '%';
+    qwhere.$or.device_ip = {};
+    qwhere.$or.device_ip.$like = '%' + query.q + '%';
+    qwhere.$or.device_brand = {};
+    qwhere.$or.device_brand.$like = '%' + query.q + '%';
+    qwhere.$or.device_mac_address = {};
+    qwhere.$or.device_mac_address.$like = '%' + query.q + '%';
+    qwhere.$or.os = {};
+    qwhere.$or.os.$like = '%' + query.q + '%';
+  }
+
+  final_where.where = qwhere;
+  if (parseInt(query._start)) final_where.offset = parseInt(query._start);
+  if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
+  if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  final_where.include = [];
+
+  if (query.login_data_id) qwhere.login_data_id = query.login_data_id;
+  if (query.appid) qwhere.appid = query.appid;
+  if (query.app_version) qwhere.app_version = query.app_version;
+  if (query.ntype) qwhere.ntype = query.ntype;
+  if (query.device_active === 'true') qwhere.device_active = true;
+  else if (query.device_active === 'false') qwhere.device_active = false;
+  if (query.hdmi) qwhere.hdmi = query.hdmi;
+  if (query.username) qwhere.username = query.username;
+
+  final_where.where.company_id = company_id; //return only records for this company
+
+  DBModel.findAndCountAll(
+    final_where
+  ).then(function (results) {
+    if (!results) {
+      res.status(404).send({
+        message: 'No data found'
+      });
+      return null;
+    } else {
+      res.setHeader("X-Total-Count", results.count);
+
+      Reader.open(path.resolve('public/files/geoip/GeoLite2-City.mmdb'))
+        .then(function (reader) {
+          for (let i = 0; i < results.rows.length; i++) {
+            const geoInfo = reader.city(results.rows[i].device_ip).city;
+            results.rows[i].dataValues.city = geoInfo.names ? geoInfo.names.en : "";
+          }
+          res.json(results.rows)
+        }).catch(e => {
+        winston.error("Error at reading geoip file at devices, error: ", e)
+        return res.status(500).jsonp({message: e});
+      });
     }
-
-    final_where.where = qwhere;
-    if (parseInt(query._start)) final_where.offset = parseInt(query._start);
-    if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
-    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
-    final_where.include = [];
-
-    if (query.login_data_id) qwhere.login_data_id = query.login_data_id;
-    if (query.appid) qwhere.appid = query.appid;
-    if (query.app_version) qwhere.app_version = query.app_version;
-    if (query.ntype) qwhere.ntype = query.ntype;
-    if (query.device_active === 'true') qwhere.device_active = true;
-    else if (query.device_active === 'false') qwhere.device_active = false;
-    if (query.hdmi) qwhere.hdmi = query.hdmi;
-    if (query.username) qwhere.username = query.username;
-
-    final_where.where.company_id = company_id; //return only records for this company
-
-    DBModel.findAndCountAll(
-        final_where
-    ).then(function (results) {
-        if (!results) {
-            res.status(404).send({
-                message: 'No data found'
-            });
-            return null;
-        } else {
-
-            res.setHeader("X-Total-Count", results.count);
-            let arr = [];
-
-            for (let i = 0; i < results.rows.length; i++) {
-                results.rows.city = req.geoip.city;
-                let obj = results.rows[i];
-                obj.dataValues.city = req.geoip.city;
-                arr.push(obj)
-            }
-
-            return res.json(arr)
-        }
-    }).catch(function (err) {
-        winston.error("Getting device list failed with error: ", err);
-        return res.jsonp(err);
-    });
+  }).catch(function (err) {
+    winston.error("Getting device list failed with error: ", err);
+    return res.jsonp(err);
+  });
 };
 
 /**
  * middleware
  */
-exports.dataByID = function(req, res, next, id) {
+exports.dataByID = function (req, res, next, id) {
 
   if ((id % 1 === 0) === false) { //check if it's integer
     return res.status(404).send({
@@ -186,7 +187,7 @@ exports.dataByID = function(req, res, next, id) {
       id: id
     },
     include: []
-  }).then(function(result) {
+  }).then(function (result) {
     if (!result) {
       res.status(404).send({
         message: 'No data with that identifier has been found'
@@ -197,10 +198,10 @@ exports.dataByID = function(req, res, next, id) {
       next();
       return null;
     }
-  }).catch(function(err) {
+  }).catch(function (err) {
     winston.error("Getting device data failed with error: ", err);
-      next(err);
-      return null;
+    next(err);
+    return null;
   });
 
 };

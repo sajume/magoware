@@ -264,7 +264,7 @@ exports.dataByID = function (req, res) {
     }
   }).catch(function (err) {
     winston.error("Getting data for client account failed with error: ", err);
-    return json(err);
+    return res.json(err);
   });
 
 };

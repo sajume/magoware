@@ -240,7 +240,7 @@ exports.delete = function(req, res) {
                 return res.json(result);
             }).catch(function (err) {
                 winston.error("Error deleting vod item, error: ", err);
-                return res.status(400).send({message: 'Deleting this vod item failed : ' + error});
+                return res.status(400).send({message: 'Deleting this vod item failed : ' + err});
             });
         }
     }).catch(function (error) {

@@ -1102,16 +1102,18 @@ exports.related = function (req, res) {
     const director_list = result[0].director.split(',');
     let director_matching_score = "";
     for (let i = 0; i < director_list.length; i++) {
-      if (i === director_list.length - 1) director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0)", [director_list[i].trim()]);
-      else director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0) + ", [director_list[i].trim()]);
+      if (i === director_list.length - 1) director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0)", [director_list[i].trim().replace(new RegExp("'",'g'), " ")]);
+      else director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0) + ", [director_list[i].trim().replace(new RegExp("'",'g'), " ")]);
     }
 
     const actor_list = result[0].starring.split(',');
     let actor_matching_score = "";
     for (let j = 0; j < actor_list.length; j++) {
-      if (j === actor_list.length - 1) actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0)", [actor_list[j].trim()]);
-      else actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0) + ", [actor_list[j].trim()]);
+      if (j === actor_list.length - 1) actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0)", [actor_list[j].trim().replace(new RegExp("'",'g'), " ")]);
+      else actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0) + ", [actor_list[j].trim().replace(new RegExp("'",'g'), " ")]);
     }
+
+    winston.info(director_matching_score, actor_matching_score)
 
     let where_condition = " vod.id <> " + req.body.vod_id + " AND isavailable = true AND vod_stream.stream_source_id = " + sqlstring.escape(req.thisuser.vod_stream_source) + " AND expiration_time > NOW() ";
     where_condition += "AND vod_stream.stream_resolution LIKE '%" + req.auth_obj.appid + "%' ";
@@ -1637,16 +1639,17 @@ exports.get_vod_item_related = function (req, res) {
       const director_list = result[0].director.split(',');
       let director_matching_score = "";
       for (let i = 0; i < director_list.length; i++) {
-        if (i === director_list.length - 1) director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0)", [director_list[i].trim()]);
-        else director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0) + ", [director_list[i].trim()]);
+        if (i === director_list.length - 1) director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0)", [director_list[i].trim().replace(new RegExp("'",'g'), " ")]);
+        else director_matching_score += sqlstring.format(" IF( ( director like '%??%' ), 0.5, 0) + ", [director_list[i].trim().replace(new RegExp("'",'g'), " ")]);
       }
 
       const actor_list = result[0].starring.split(',');
       let actor_matching_score = "";
       for (let j = 0; j < actor_list.length; j++) {
-        if (j === actor_list.length - 1) actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0)", [actor_list[j].trim()]);
-        else actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0) + ", [actor_list[j].trim()]);
+        if (j === actor_list.length - 1) actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0)", [actor_list[j].trim().replace(new RegExp("'",'g'), " ")]);
+        else actor_matching_score += sqlstring.format("IF( ( starring like '%??%' ), 0.3, 0) + ", [actor_list[j].trim().replace(new RegExp("'",'g'), " ")]);
       }
+
       const vod_stream = {
         join_query: " INNER JOIN vod_stream ON vod.id = vod_stream.vod_id ",
         where_condition: " AND vod_stream.stream_source_id = " + sqlstring.escape(req.thisuser.vod_stream_source) + " AND vod_stream.stream_resolution LIKE '%" + req.auth_obj.appid + "%' "
@@ -2256,16 +2259,17 @@ exports.get_movie_details = function (req, res) {
     where: {id: Number(req.params.vod_id), company_id: req.thisuser.company_id}
   }).then(function (result) {
     let vod_data = {};
+    let found = "";
     if (result) {
       if (result.vod_subtitles) {
         try {
-          const found = result.vod_subtitles.find(function (x) {
+          found = result.vod_subtitles.find(function (x) {
             if (x.id === (result.default_subtitle_id)) {
               return x.title;
             }
           }).title;
         } catch (error) {
-          let found = "";
+          
         }
       }
 
@@ -2513,6 +2517,52 @@ function add_click(movie_title) {
   });
 };
 
+function getEventValue(req, event_value, event_label) {
+
+    models.vod.findOne({
+        attributes: ['id'],
+        where: {title: event_label}
+    }).then(function (result) {
+
+        if(!result){
+            return {status: false, message: "there was an getting data"}
+        }
+        else {
+            var vod_id = result.dataValues.id;
+            models.login_data.findOne({
+                attributes: ['id','username'],
+                where: {username: req.auth_obj.username}
+            }).then(function (result) {
+                if (!result) {
+                    return {status: false, message: "User was not found"}
+                }
+                else {
+                    var user_id = result.dataValues.id
+                    models.vod_resume.update(
+                        {percentage_position: event_value,},
+                        {where: {vod_id: vod_id, login_id : user_id}},
+                    )
+                }
+                return null;
+            }).then(function (result) {
+                return null;
+            }).catch(function (error) {
+                winston.error("Error updating vod_resume at resume position: ", error);
+                return null;
+            });
+            return null;
+        }
+    }).catch(function (error) {
+        winston.error("Error getting data at vod resume : ", error);
+        return null;
+    });
+};
+
+
+
+
+
 exports.delete_resume_movie = delete_resume_movie;
 exports.add_click = add_click;
+exports.getEventValue = getEventValue;
 

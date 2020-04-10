@@ -3,7 +3,8 @@
 
 var path = require('path'),
     policy = require('../policies/mago.server.policy'),
-    salesReports = require(path.resolve('./modules/mago/server/controllers/salesreport.server.controller'));
+    salesReports = require(path.resolve('./modules/mago/server/controllers/salesreport.server.controller')),
+    cancelSalesreport = require(path.resolve('./modules/mago/server/controllers/cancel_subscription.server.controller'))
 
 module.exports = function(app) {
 
@@ -25,6 +26,16 @@ module.exports = function(app) {
         .get(salesReports.read)
         .put(salesReports.update)
         .delete(salesReports.delete);
+
+
+    app.route('/api/salesreports/cancel/:salesReportId')
+        .all(policy.Authenticate)
+        .all(policy.isAllowed)
+        .post(cancelSalesreport.update);
+
+
+    app.route('/api')
+
 
     app.route('/api/annul')
         .all(policy.Authenticate)

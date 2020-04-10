@@ -6,7 +6,8 @@ var path = require('path'),
     subscriptionApiHandler = require(path.resolve('./modules/public-api/server/controllers/subscription.server.controller.js')),
     epgController = require(path.resolve('./modules/public-api/server/controllers/public.epgdata.server.controller.js')),
     comboApiHandler = require(path.resolve('./modules/public-api/server/controllers/combo.server.controller.js')),
-    companyApiHandler = require(path.resolve('./modules/public-api/server/controllers/company.server.controller.js'))
+    companyApiHandler = require(path.resolve('./modules/public-api/server/controllers/company.server.controller.js')),
+    devicesApiHandler = require(path.resolve('./modules/public-api/server/controllers/devices.server.controller.js'))
 
 module.exports = function(app) {
 
@@ -35,12 +36,14 @@ module.exports = function(app) {
     app.route('/api/public/customer/:username')
         .all(policy.isApiKeyAllowed)
         .get(customerApiHandler.getCustomer)
-        .put(customerApiHandler.updateCustomer);
+        .put(customerApiHandler.updateCustomer)
+        .post(customerApiHandler.updateCustomer);
 
     app.route('/api/public/subscription')
         .all(policy.isApiKeyAllowed)
         .post(subscriptionApiHandler.addSubscription)
         .put(subscriptionApiHandler.cancelSubscription)
+        .post(subscriptionApiHandler.cancelSubscription)
         .get(subscriptionApiHandler.listSubscription);
 
     app.route('/api/public/packages')
@@ -48,18 +51,27 @@ module.exports = function(app) {
         .get(subscriptionApiHandler.listPackages);
 
 
-    app.route("/api/public/customer/:username/subscription")
+    app.route("/api/public/customer/salesreport/:username")
         .all(policy.isApiKeyAllowed)
-        .get(subscriptionApiHandler.getCustomerSubscriptions);
+        .get(subscriptionApiHandler.getCustomerSalesreport);
 
-    app.route('/api/public/customer/:username/package')
+    app.route('/api/public/customer/package/:username')
         .all(policy.isApiKeyAllowed)
         .get(subscriptionApiHandler.getCustomerPackages)
 
     app.route('/api/public/combo')
         .all(policy.isApiKeyAllowed)
         .get(comboApiHandler.getCombos);
-    
+
+    app.route('/api/public/devices/:username')
+        .all(policy.isApiKeyAllowed)
+        .post(devicesApiHandler.updateDevices)
+        .put(devicesApiHandler.updateDevices);
+
+    app.route('/api/public/userDevices/:username')
+        .all(policy.isApiKeyAllowed)
+        .get(devicesApiHandler.getUserDevices);
+
     app.route('/api/public/company')
         .all(policy.isApiKeyAllowed)
         .all(policy.isSuperadmin)
@@ -68,6 +80,7 @@ module.exports = function(app) {
 
     app.route('/api/public/company/:id')
         .put(companyApiHandler.updateCompany)
+        .post(companyApiHandler.updateCompany);
 
 
     /* ---------------------------------------------- EPG Data ---------------------------------------------- */

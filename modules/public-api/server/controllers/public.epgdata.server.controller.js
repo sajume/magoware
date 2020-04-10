@@ -72,8 +72,8 @@ exports.insert_epg_row = function(req, res) {
         return null;
     }).catch(function(err) {
         winston.error("Finding channel failed with error: ", err);
-        return res.status(400).send({
-            message: errorHandler.getErrorMessage(err)
+        res.status(500).send({
+            error: { code: 500, message: 'Internal error'}
         });
     });
 };

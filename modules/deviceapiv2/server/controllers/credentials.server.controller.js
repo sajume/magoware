@@ -249,7 +249,8 @@ exports.logout = function (req, res) {
  *     }
  */
 exports.logout_user = function (req, res) {
-  var appids = []; //will store appids of devices of the same type
+  let appids = []; //will store appids of devices of the same type
+  const company_id = req.get("company_id") || 1;
 
   //find type of device
   models.app_group.findOne({
@@ -267,7 +268,8 @@ exports.logout_user = function (req, res) {
           username: req.auth_obj.username,
           device_active: true,
           appid: {in: appids},
-          login_data_id: req.thisuser.id
+          login_data_id: req.thisuser.id,
+          company_id: company_id
         }, //keshtu u ndryhsua, 16-7
         order: [['updatedAt', 'ASC']] //first record
       }).then(function (onedevice) {
@@ -406,12 +408,16 @@ exports.loginv2 = function (req, res) {
     where: {app_id: req.auth_obj.appid}
   }).then(function (app_group) {
     models.devices.findAll({
+      include: [{
+        model: models.app_group, 
+        required: true, 
+        attributes:[], 
+        where: {app_group_id: app_group.app_group_id}
+      }],
       where: {username: req.auth_obj.username, device_active: true, device_id: {not: req.auth_obj.boxid}}
     }).then(function (device) {
-
-      var max_multilogin_nr = req.app.locals.advanced_settings[req.thisuser.company_id].auth.max_logins;
-
-      if (!device || device.length < Number(max_multilogin_nr)) {
+      
+      if (!device || device.length < Number(req.thisuser.max_login_limit)) {
         upsertDevice({
           device_active: true,
           login_data_id: req.thisuser.id,
@@ -419,8 +425,8 @@ exports.loginv2 = function (req, res) {
           device_mac_address: decodeURIComponent(req.body.macaddress),
           appid: req.auth_obj.appid,
           app_name: (req.body.app_name) ? req.body.app_name : '',
-          app_version: req.body.appversion,
-          ntype: req.body.ntype,
+          app_version: req.body.appversion ? req.body.appversion : "1.0.0",
+          ntype: req.body.ntype ? req.body.ntype : 1,
           device_id: req.auth_obj.boxid,
           hdmi: (req.body.hdmi == 'true') ? 1 : 0,
           firmware: decodeURIComponent(req.body.firmwareversion),

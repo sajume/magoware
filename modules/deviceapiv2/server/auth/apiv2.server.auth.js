@@ -8,10 +8,185 @@ var CryptoJS = require("crypto-js"),
   db = require(path.resolve('./config/lib/sequelize')),
   models = db.models,
   authenticationHandler = require(path.resolve('./modules/deviceapiv2/server/controllers/authentication.server.controller.js')),
+  redis = require(path.resolve('./config/lib/redis')),
   response = require(path.resolve("./config/responses.js")),
   winston = require("winston");
 
-const appIDs = ['2', '3'];
+const mobileAppIDs = ['2', '3'];
+const appIDs = ['1', '2', '3', '4', '5', '6', '7'];
+
+/**
+ * Verify auth token middleware
+ */
+function verifyToken(req, res, next) {
+    let companyId = req.headers.company_id ? req.headers.company_id : 1;
+    
+    if (!req.app.locals.backendsettings[companyId]) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+        return;
+    }
+
+    let authParams = decodeAuth(req);
+
+    if (!authParams) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+        return;
+    }
+
+    authParams.companyId = companyId;
+
+    //Check plaintext auth
+    if(authParams.authInBody && isplaintext(authParams.rawAuth, req.plaintext_allowed)){
+        if(req.plaintext_allowed){
+            let authObj = parse_plain_auth(authParams.rawAuth);
+            if (!authObj) {
+                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
+                return ;
+            }
+
+            set_screensize(authObj);
+            authParams.auth = authObj;
+            req.auth_obj = authObj;
+            next();
+        }
+        else{
+            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
+        }
+
+        return;
+    }
+
+    //Decrypt auth async
+    return decryptAuth(authParams.rawAuth, req.app.locals.backendsettings[companyId].new_encryption_key)
+    .then(function(auth) {
+        let authObj = querystring.parse(auth,";","=");
+
+        //check if auth is missing params
+        if (!missing_params(authObj)) {
+            if(req.body.hdmi === 'true' && mobileAppIDs.indexOf(authObj.appid) !== -1) {
+                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
+                return;
+            }
+
+            if (!valid_appid(authObj)) {
+                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_APPID', 'no-store');
+                return;
+            }
+            
+            set_screensize(authObj);
+
+            authParams.auth = authObj;
+            req.auth_obj = authObj;
+            next();
+        }
+        else if (req.app.locals.backendsettings[companyId].key_transition == true) {
+            //try to decrypt auth with old key
+            return decryptAuth(authParams.rawAuth, req.app.locals.backendsettings[companyId].old_encryption_key)
+            .then(function(auth) {
+                let authObj = querystring.parse(auth,";","=");
+                if (missing_params(authObj)) {
+                    response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+                    return;
+                }
+                
+                if(req.body.hdmi === 'true' && mobileAppIDs.indexOf(authObj.appid) !== -1) {
+                    response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
+                    return;
+                }
+
+                if (!valid_appid(authObj)) {
+                    response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_APPID', 'no-store');
+                    return;
+                }
+
+                set_screensize(authObj);
+                authParams.auth = authObj;
+                req.auth_obj = authObj;
+                next();
+            }).catch(function(err) {
+                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+            });
+        }
+        else {
+            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+        }
+    }).catch(function(err) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+    });
+}
+
+/**
+ * Verify authorization in database
+ */
+function verifyUserAccount(req, res, next) {
+    let params = req.authParams;
+    let auth = params.auth;
+
+    if(req.empty_cred){
+        req.auth_obj = auth;
+        next();
+    }
+    else{
+        //reading client data
+        models.login_data.findOne({
+            where: {username: auth.username, company_id: params.companyId}
+        }).then(function (result) {
+            if(result) {
+                if(result.account_lock) {
+                    response.send_res(req, res, [], 703, -1, 'ACCOUNT_LOCK_DESCRIPTION', 'ACCOUNT_LOCK_DATA', 'no-store');
+                    return;
+                }
+
+                //the user is a normal client account. check user rights to make requests with his credentials
+                if(auth.username !== 'guest') {
+                    authenticationHandler.authenticateAsync(auth.password, result.salt, result.password, function(authenticated) {
+                        if (authenticated === false) {
+                            //Requests may come after login with account kit.
+                            authenticationHandler.encryptPasswordAsync(result.username, result.salt, function(hash) {
+                                if (hash !== auth.password.replace(/ /g, "+")) {
+                                    response.send_res(req, res, [], 704, -1, 'WRONG_PASSWORD_DESCRIPTION', 'WRONG_PASSWORD_DATA', 'no-store');
+                                    return
+                                }
+
+                                //Account kit user
+                                req.thisuser = result;
+                                next();
+                            })
+                            return
+                        }
+
+                        //Normal user was authenticated
+                        req.thisuser = result;
+                        next();
+                    });
+                }
+                //login as guest is enabled and the user is guest. allow request to be processed
+                else if(req.app.locals.backendsettings[params.companyId].allow_guest_login === true && auth.username === 'guest'){
+                    req.thisuser = result;
+                    next();
+                }
+                //the user is a guest account but guest login is disabled. return error message
+                else {
+                    response.send_res(req, res, [], 702, -1, 'GUEST_LOGIN_DISABLED_DESCRIPTION', 'GUEST_LOGIN_DISABLED_DATA', 'no-store');
+                }
+            }
+            else response.send_res(req, res, [], 702, -1, 'USER_NOT_FOUND_DESCRIPTION', 'USER_NOT_FOUND_DATA', 'no-store');
+        }).catch(function(error) {
+            winston.error("Searching for the user account failed with error: ", error);
+            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+        });
+    }
+}
+
+function decodeAuthMiddleware(req, res, next) {
+    let authParams = decodeAuth(req);
+    if (!authParams) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+        return;
+    }
+
+    next();
+}
 
 function auth_encrytp(plainText, key) {
     var C = CryptoJS;
@@ -91,6 +266,32 @@ exports.emptyCredentials = function(req, res, next) {
     next();
 }
 
+exports.oneTimeAccessToken = function(req, res, next) {
+    let authParams = decodeAuth(req);
+
+    if(!authParams) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+        return;
+    }
+
+    let companyId = req.headers.companyId ? req.headers.company_id : 1;
+    let redisKey = companyId + ':one_time_access_tokens:' + authParams.rawAuth;
+
+    redis.client.get(redisKey, function(err, accessToken) {
+        if (err) {
+            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+            return;
+        }
+
+        if (accessToken) {
+            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
+            return;
+        }
+
+        req.isOneTimeToken = true;
+        next();
+    })
+}
 
 /**
  * @apiDefine header_auth
@@ -184,9 +385,6 @@ function isAllowed(req, res, next) {
         if((req.body.hdmi === 'true') && (['2', '3'].indexOf(auth_obj.appid) !== -1)){
             response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
         }
-        else if(valid_timestamp(auth_obj) === false){
-            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TIMESTAMP', 'no-store');
-        }
         else if(valid_appid(auth_obj) === true){
             set_screensize(auth_obj);
 
@@ -262,54 +460,9 @@ function isAllowedAsync(req, res, next) {
     }
 
     //Retrieve encoded auth from body, auth header or params
-    let authEncoded = null;
-    let authToken = null;
-    let authParams = null;
-    if(req.headers.auth) {
-        authEncoded = decodeURIComponent(req.headers.auth);
-        authEncoded = authEncoded.replace(/[{}]/g, '');
-
-        //Parse auth parameters to object
-        authParams = querystring.parse(authEncoded,",","=");
-        if (authParams[' auth']) {
-            authToken = authParams[' auth'];
-        }
-        else if (authParams['auth']) {
-            authToken = authParams['auth']
-        }
-        else {
-            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
-            return;
-        }
-    }
-    else if(req.body.auth) {
-        authEncoded = decodeURIComponent(req.body.auth);
-
-        //Check plaintext auth
-        if(isplaintext(authEncoded, req.plaintext_allowed)){
-            if(req.plaintext_allowed){
-                //call verifyAuth
-                let authObj = parse_plain_auth(authEncoded);
-                if (!authObj) {
-                    response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
-                    return ;
-                }
-
-                authObj.companyId = companyId;
-                verifyAuth(req, res, next, authObj, authObj);
-            }
-            else{
-                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
-            }
-
-            return;
-        }
-
-        //Params are in body
-        authParams = req.body;
-        authToken = authEncoded;
-    }
-    else {
+    let authParams = decodeAuth(req);
+    
+    if (!authParams) {
         //Auth was not sent neither in plain text nor encrypted
         response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
         return;
@@ -330,10 +483,34 @@ function isAllowedAsync(req, res, next) {
         }
     }
 
+    if (authParams.authInBody) {
+        //Check plaintext auth
+        if(isplaintext(authParams.rawAuth, req.plaintext_allowed)){
+            if(req.plaintext_allowed){
+                //call verifyAuth
+                let authObj = parse_plain_auth(authParams.rawAuth);
+                if (!authObj) {
+                    response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
+                    return ;
+                }
+
+                authObj.companyId = companyId;
+                verifyAuth(req, res, next, authObj, authObj);
+            }
+            else{
+                response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'PLAINTEXT_TOKEN', 'no-store');
+            }
+
+            return;
+        }
+    }
+
     //Decrypt auth async
-    return decryptAuth(authToken, req.app.locals.backendsettings[companyId].new_encryption_key)
+    return decryptAuth(authParams.rawAuth, req.app.locals.backendsettings[companyId].new_encryption_key)
       .then(function(auth) {
           let authObj = querystring.parse(auth,";","=");
+          authParams.token = authObj;
+
           //check if auth is missing params
           if (!missing_params(authObj)) {
               //call verifyAuth
@@ -341,9 +518,10 @@ function isAllowedAsync(req, res, next) {
           }
           else if (req.app.locals.backendsettings[companyId].key_transition == true) {
               //try to decrypt auth with old key
-              return decryptAuth(authToken, req.app.locals.backendsettings[companyId].old_encryption_key)
+              return decryptAuth(authParams.rawAuth, req.app.locals.backendsettings[companyId].old_encryption_key)
                 .then(function(auth) {
                     let authObj = querystring.parse(auth,";","=");
+                    authParams.token = authObj;
                     if (missing_params(authObj)) {
                         response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
                         return;
@@ -365,13 +543,16 @@ function isAllowedAsync(req, res, next) {
 
 //Verifies token and load parameters from auth
 function verifyAuth(req, res, next, auth, params) {
-    if(req.body.hdmi === 'true' && appIDs.indexOf(auth.appid) !== -1) {
+    Object.assign(auth, params);
+    if(req.body.hdmi === 'true' && mobileAppIDs.indexOf(auth.appid) !== -1) {
         response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
     }
-    else if(valid_timestamp(auth) === false){
-        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TIMESTAMP', 'no-store');
-    }
     else if(valid_appid(auth) === true){
+        if (req.isOneTimeToken && params.rawAuth) {
+            let redisKey = params.companyId + ':one_time_access_tokens:' + params.rawAuth;
+            redis.client.set(redisKey, '1', 'EX', 1800); //Expire in 2 minutes
+        }
+
         set_screensize(auth);
 
         if(req.empty_cred){
@@ -437,11 +618,81 @@ function verifyAuth(req, res, next, auth, params) {
     }
 }
 
+function decodeAuth(req) {
+    if (req.authParams) {
+        return req.authParams;
+    }
+
+    let authParams = null;
+
+    try {
+        if (req.headers.auth) {
+            let authEncoded = decodeURIComponent(req.headers.auth);
+            authEncoded = authEncoded.replace(/[{}]/g, '');
+    
+            //Parse auth parameters to object
+            authParams = querystring.parse(authEncoded,",","=");
+            if (authParams[' auth']) {
+                authParams = removeLeadingKeySpaces(authParams);
+                authParams.rawAuth = authParams['auth'];
+            }
+            else if (authParams['auth']) {
+                authParams.rawAuth = authParams['auth']
+            }
+            else {
+                return null;
+            }
+        }
+        else if (req.body.auth) {
+            let rawAuth = decodeURIComponent(req.body.auth);
+            authParams = {
+                rawAuth: rawAuth
+            };
+
+            Object.assign(authParams, req.body);
+            authParams.authInBody = true;
+        }
+        else {
+            return null;
+        }    
+    }  
+    catch(e) {
+        return null;
+    }
+
+    authParams.rawAuth = authParams.rawAuth.replace(/(,\+)/g, ',').replace(/\\r|\\n|\n|\r/g, ''); //remove all occurrences of '+' characters before each token component, remove newlines and carriage returns
+    authParams.rawAuth = authParams.rawAuth.replace(/ /g, "+")
+    
+    //Load required parameters to body
+    if (!req.body.language) {
+        if (authParams['language']) {
+            req.body.language = authParams['language'];
+        }
+        else {
+            req.body.language = 'eng'
+        }
+    }
+    req.authParams = authParams;
+    
+    return req.authParams;
+}
+
+function removeLeadingKeySpaces(obj) {
+    let newObj = {};
+    let keys = Object.keys(obj);
+
+    keys.forEach(function(key){
+        let newKey = key.trimLeft();
+        newObj[newKey] = obj[key];
+    });
+
+    return newObj;
+}
+
 function decryptAuth(auth, key) {
     return new Promise(function(resolve, reject) {
         let iv = new Buffer(key);
-        auth = auth.replace(/(,\+)/g, ',').replace(/\\r|\\n|\n|\r/g, ''); //remove all occurrences of '+' characters before each token component, remove newlines and carriage returns
-        auth = auth.replace(/ /g, "+")
+        
         decryptAsync(key, iv, auth, function(err, plain) {
             if (err) {
                 reject(err);
@@ -484,21 +735,36 @@ function decryptAsync(key, iv, cipherText, callback) {
     )
 }
 
+function expiryToken(req, res, next) {
+    if((Math.abs(Date.now() - req.authParams.auth.timestamp)) > 120000) {
+        response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TIMESTAMP', 'no-store');
+        return;
+    }
+
+    if (req.isOneTimeToken && req.authParams.rawAuth) {
+        let redisKey = req.authParams.companyId + ':one_time_access_tokens:' + req.authParams.rawAuth;
+        redis.client.set(redisKey, '1', 'EX', 1800); //Expire in 2 minutes
+    }
+
+    next();
+}
+
 function missing_params(auth_obj){
     if(auth_obj.username == undefined || auth_obj.password == undefined || auth_obj.appid == undefined || auth_obj.boxid == undefined || auth_obj.timestamp == undefined) return true;
     else return false;
 }
-function valid_timestamp(auth_obj){
-    if((Math.abs(Date.now() - auth_obj.timestamp)) > 120000) return true;
-    else return true;
-}
+
 function valid_appid(auth_obj){
-    if(['1', '2', '3', '4', '5', '6'].indexOf(auth_obj.appid) === -1) return false;
+    if(appIDs.indexOf(auth_obj.appid) === -1) return false;
     else return true;
 }
 function set_screensize(auth_obj){
-    if(['1', '4', '5', '6'].indexOf(auth_obj.appid) === -1) auth_obj.screensize = 2;
-    else auth_obj.screensize = 1;
+    if(mobileAppIDs.indexOf(auth_obj.appid) !== -1) {
+        auth_obj.screensize = 2;
+    }
+    else {
+        auth_obj.screensize = 1;
+    }
 }
 function isplaintext(auth, plaintext_allowed){
     var auth_obj = parse_plain_auth(auth);
@@ -580,10 +846,6 @@ exports.isAuthTokenValid = function(req, res, next) {
         if((req.body.hdmi === 'true') && (['2', '3'].indexOf(auth_obj.appid) !== -1)){
             response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
         }
-        //controls if timestamp is within limits
-        else if(valid_timestamp(auth_obj) === false){
-            response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TIMESTAMP', 'no-store');
-        }
         //controls if appid is a valid number
         else if(valid_appid(auth_obj) === true){
             set_screensize(auth_obj);
@@ -602,3 +864,7 @@ exports.decryptAuth = decryptAuth;
 //Old isAllowed
 //exports.isAllowed = isAllowed;
 exports.isAllowed = isAllowedAsync;
+exports.expiryToken = expiryToken;
+exports.decodeAuth = decodeAuthMiddleware;
+exports.verifyToken = verifyToken;
+exports.verifyUserAccount = verifyUserAccount;

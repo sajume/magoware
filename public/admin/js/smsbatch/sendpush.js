@@ -13,7 +13,7 @@ function sendpush(Restangular, $uibModal, $q, notification, $state) {
 
             scope.icon = 'glyphicon-plus';
 
-                if (attrs.type == 'softwareupdate') scope.label = 'Send Update Request';
+                if (attrs.type == 'SOFTWARE_INSTALL') scope.label = 'Send Update Request';
                 if (attrs.type == 'deletedata') scope.label = 'Send Delete Data Request';
                 if (attrs.type == 'deletesharedpreferences') scope.label = 'Send Delete Shared Pref Request';
 

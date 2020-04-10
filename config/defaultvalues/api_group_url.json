@@ -22,7 +22,8 @@
     "new_sale": [
         "/api/logindata",
         "/api/combos",
-        "/api/users"
+        "/api/users",
+        "/api/useravailable"
     ],
     "customers": [
         "/api/vodstreamsources/",
@@ -153,7 +154,8 @@
         "/api/tmdbseries/",
         "/api/import_channel",
         "/api/import_vod",
-        "/api/subtitlesImport"
+        "/api/subtitlesImport",
+        "/file-upload/single-file/"
     ],
     "branding": [
         "/api/devicemenus",
@@ -200,6 +202,7 @@
         "/api/url/",
         "/api/url/",
         "/api/apikeys/",
+        "/api/webhooks",
         "/api/advancedsettings",
         "/api/advancedsettings/",
         "/apiv2/geoip/status",

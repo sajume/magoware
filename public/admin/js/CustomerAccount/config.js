@@ -435,6 +435,12 @@ export default function (nga, admin) {
                 ])
                 .label('Is tester')
                 .validation({ required: true}),
+
+            nga.field('max_login_limit', 'number')
+                .isDetailLink(false)
+                .validation({ required: true})
+                .label('Max Login Limit'),
+
             nga.field('template')
                 .label('')
                 .template(edit_button),
@@ -804,6 +810,11 @@ export default function (nga, admin) {
                 ])
                 .label('Is tester')
                 .validation({ required: true}),
+            nga.field('max_login_limit', 'number')
+                .isDetailLink(false)
+                .label('Max Login Limit')
+                .validation({ required: true}),
+
             nga.field('template')
                 .label('')
                 .template(edit_button),
@@ -895,6 +906,8 @@ export default function (nga, admin) {
                                           return 'Samsung';
                                   } else if (value === 6) {
                                           return 'Apple TV';
+                                  } else if(value === 7) {
+                                          return 'Web Smart TV';
                                   }
                           })
                         .cssClasses('hidden-xs')

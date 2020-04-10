@@ -148,7 +148,7 @@ function mysha1( data ) {
 //temp hdnts
 
 exports.akamai_token_v2_generator_hdnts = function(req,res) {
-    var tokenConfig = req.app.locals.advanced_settings[req.thisuser.company_id].akamai;
+    var tokenConfig = req.app.locals.advanced_settings[req.authParams.companyId].akamai;
     var config = {
         algorithm : 'SHA256',
         acl : '*',
@@ -175,7 +175,7 @@ exports.akamai_token_v2_generator_hdnts = function(req,res) {
 
 
 exports.akamai_token_v2_generator = function(req,res) {
-    var tokenConfig = req.app.locals.advanced_settings[req.thisuser.company_id].akamai;
+    var tokenConfig = req.app.locals.advanced_settings[req.authParams.companyId].akamai;
     var config = {
         algorithm : 'SHA256',
         acl : '*',
@@ -201,7 +201,7 @@ exports.akamai_token_v2_generator = function(req,res) {
 
 //returns the token as aditional query paramter
 exports.akamai_token_v2_generator_extraquery = function(req,res) {
-    var tokenConfig = req.app.locals.advanced_settings[req.thisuser.company_id].akamai;
+    var tokenConfig = req.app.locals.advanced_settings[req.authParams.companyId].akamai;
     var config = {
         algorithm : 'SHA256',
         acl : '*',
@@ -227,7 +227,7 @@ exports.akamai_token_v2_generator_extraquery = function(req,res) {
 
 
 exports.catchup_akamai_token_v2_generator = function(req,res) {
-    var tokenConfig = req.app.locals.advanced_settings[req.thisuser.company_id].akamai;
+    var tokenConfig = req.app.locals.advanced_settings[req.authParams.companyId].akamai;
     var config = {
         algorithm : 'SHA256',
         acl : '*',
@@ -252,7 +252,7 @@ exports.catchup_akamai_token_v2_generator = function(req,res) {
 };
 
 exports.flussonic_token_generator =  function(req, res) {
-    var tokenConfig = req.app.locals.advanced_settings[req.thisuser.company_id].flussonic;
+    var tokenConfig = req.app.locals.advanced_settings[req.authParams.companyId].flussonic;
 
     var token_key = tokenConfig.key; //server side only
     var password = req.query.password || tokenConfig.password; //Can be sent as query parameter
@@ -307,7 +307,7 @@ exports.flussonic_token__remote =  function(req, res) {
  */
 
 exports.nimble_token_generator =  function(req, res) {
-    var tokenConfig = req.app.locals.advanced_settings[req.thisuser.company_id].nimble_token;
+    var tokenConfig = req.app.locals.advanced_settings[req.authParams.companyId].nimble_token;
     var today = (new Date()).format("UTC:m/d/yyyy h:MM:ss TT");
     var ip = req.ip.replace('::ffff:', ''); //req.connection.remoteAddress;
     var str2hash = ip + tokenConfig.key + today + tokenConfig.window;
@@ -336,7 +336,7 @@ exports.handleGenerateTokenJson = function(req, res) {
 }
 
 function generateECToken(req) {
-    let config = req.app.locals.advanced_settings[req.thisuser.company_id].verizon;
+    let config = req.app.locals.advanced_settings[req.authParams.companyId].verizon;
     let expireAt = Date.now() + config.window * 1000;
     let ip = req.header('x-forwarded-for') || req.connection.remoteAddress;
     ip = ip.replace('::ffff:', '');
@@ -350,7 +350,7 @@ function generateECToken(req) {
 }
 
 exports.nimble_drm_key = function(req, res) {
-    var key = req.app.locals.advanced_settings[req.thisuser.company_id].nimble_drm.key;
+    var key = req.app.locals.advanced_settings[req.authParams.companyId].nimble_drm.key;
 
     var content = Buffer.from(key, 'hex');
     res.setHeader('Content-Type', 'binary/octet-stream');
@@ -359,7 +359,7 @@ exports.nimble_drm_key = function(req, res) {
 
 // Generate wowza HASH Token.
 exports.wowza_token_generator = function (req, res) {
-    var tokenConfig = req.app.locals.advanced_settings[req.thisuser.company_id].wowza;
+    var tokenConfig = req.app.locals.advanced_settings[req.authParams.companyId].wowza;
 
     // The shared secret as generated in our Wowza application (Playback security tab) - use your own
     var sharedSecret = '6e94c7a77220aea1';

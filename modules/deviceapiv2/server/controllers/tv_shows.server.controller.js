@@ -7,7 +7,8 @@ const path = require('path'),
   async = require('async'),
   response = require(path.resolve("./config/responses.js")),
   winston = require(path.resolve('./config/lib/winston')),
-  moment = require('moment');
+  moment = require('moment'),
+  sqlstring = require('sqlstring');
 
 
 /**
@@ -52,15 +53,14 @@ exports.tv_show_list = function (req, res) {
     'original_language', 'original_title', ['adult_content', 'adult'], ['description', 'overview'], [sequelize.fn('DATE_FORMAT', sequelize.col('tv_series.release_date'), '%Y-%m-%d'), 'release_date']
   ];
 
-  //prepare search condition by keyword
   if (req.query.search) {
+    const q = decodeURIComponent(req.query.search);
+    const like = {like: sqlstring.format("?", ["%" + q.trim() + "%"]).replace(new RegExp("'", 'g'), "")};
     final_where.where.$or = {
-      title: {$like: '%' + req.query.search + '%'},
-      original_title: {$like: '%' + req.query.search + '%'},
-      description: {$like: '%' + req.query.search + '%'},
-      tagline: {$like: '%' + req.query.search + '%'},
-      cast: {$like: '%' + req.query.search + '%'}
-    };
+      title: like,
+      original_title: like,
+      description: like
+    }
   }
 
   //filter list

@@ -70,19 +70,19 @@ export default function(nga, admin) {
         .addChild(
           nga
             .menu(admin.getEntity('sales_by_date'))
-            .title('Sales by day')
+            .title('Subscriptions by day')
             .icon('<span class="fa fa-list fa-fw"></span>')
         )
         .addChild(
           nga
             .menu(admin.getEntity('sales_by_month'))
-            .title('Sales by month')
+            .title('Activations by month')
             .icon('<span class="fa fa-list fa-fw"></span>')
         )
         .addChild(
           nga
             .menu(admin.getEntity('sales_monthly_expiration'))
-            .title('Account expiration by month')
+            .title('Expiration by month')
             .icon('<span class="fa fa-list fa-fw"></span>')
         )
         .addChild(

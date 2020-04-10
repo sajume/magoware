@@ -60,28 +60,28 @@ exports.create = function(req, res) {
 
 };
 exports.reInvite = function(req, res) {
-  db.users.findOne({
-    where: {id: req.body.user_id}
-  }).then(function(user) {
-    if (!user) {
-      res.status(404).send({status: false, message: 'User not found'});
-      return;
-    }
+    db.users.findOne({
+        where: {id: req.body.user_id}
+    }).then(function(user) {
+        if (!user) {
+            res.status(404).send({status: false, message: 'User not found'});
+            return;
+        }
 
-    if (user.invite_pending == false) {
-      reject(new Error('User does not have a pending invite'));
-      return;
-    }
+        if (user.invite_pending == false) {
+            reject(new Error('User does not have a pending invite'));
+            return;
+        }
 
-    return userFunctions.sendInvite(req, user)
-      .then(function() {
-        res.send({status: true, message: 'Invitation sent'});
-      }).catch(function(err) {
-        res.send({status: false, message: 'Invitation sending failed'});
-      });
-  }).catch(function(err) {
-    res.status(500).send({status: false, message: 'Internal error'});
-  })
+        return userFunctions.sendInvite(req, user)
+            .then(function() {
+                res.send({status: true, message: 'Invitation sent'});
+            }).catch(function(err) {
+                res.send({status: false, message: 'Invitation sending failed'});
+            });
+    }).catch(function(err) {
+        res.status(500).send({status: false, message: 'Internal error'});
+    })
 }
 
 exports.createAndInvite = function (req, res) {
@@ -117,7 +117,9 @@ exports.createAndInvite = function (req, res) {
                         template: null,
                         isavailable: true,
                         third_party_api_token: '',
-                        invite_pending: true
+                        invite_pending: true,
+                        firstname: req.body.firstname,
+                        lastname: req.body.lastname
                     }
 
                     let userObj = db.users.build(userData);
@@ -293,8 +295,8 @@ exports.list = function(req, res) {
         required: true,
         attributes: ['code'],
       }
-    ] 
-      
+    ]
+
 
   DBModel.findAndCountAll(
 

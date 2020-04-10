@@ -18,6 +18,9 @@ exports.event = function(req, res) {
     //thistracker.trackevent(req,res);
     googletracker.trackevent(req,res);
 
+    var event_value = req.body.event_value;
+    var event_label = req.body.event_label;
+    vod.getEventValue(req, event_value, event_label);
     res.send('ok');
 };
 

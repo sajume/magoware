@@ -57,5 +57,15 @@
         "description": "Integration configuration for stream token generation for Nimble. Key is used to generate token. Window defines the time the token is valid.",
         "key": "",
         "window": 10
+    },
+    "ezdrm": {
+        "description": "Integration configuration for stream token generation for EZDRM. Parameters username and password are credentials of your account at EZDRM.",
+        "username": "",
+        "password": ""
+    },
+    "upgrade_policy": {
+        "description": "Configuration for device upgrade process",
+        "availability_interval": [[3, 0], [6, 0]],
+        "availability_denominator": 1
     }
 }

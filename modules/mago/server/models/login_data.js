@@ -120,6 +120,11 @@ module.exports = function(sequelize, DataTypes) {
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false
+        },
+        max_login_limit: {
+            type: DataTypes.INTEGER(11),
+            allowNull: false,
+            defaultValue: 2
         }
     }, {
         tableName: 'login_data',
@@ -130,6 +135,9 @@ module.exports = function(sequelize, DataTypes) {
             if (models.channel_stream_source){
                 loginData.belongsTo(models.channel_stream_source, {foreignKey: 'channel_stream_source_id'});
             }
+      /*      if (models.vod_stream){
+                loginData.belongsTo(models.vod_stream, {foreignKey: 'vod_stream_source'});
+            }*/
             if (models.subscription){
                 loginData.hasMany(models.subscription, {foreignKey: 'login_id'});
             }

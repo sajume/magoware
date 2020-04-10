@@ -26,7 +26,7 @@ export default function (nga, admin) {
         .exportFields([
             vpackages.listView().fields(),
         ]);
-   
+
 	vpackages.creationView()
         .title('<h4>Packages <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Package</h4>')
         .onSubmitSuccess(['progression', 'notification', '$state', 'entry', 'entity', function(progression, notification, $state, entry, entity) {
@@ -54,7 +54,7 @@ export default function (nga, admin) {
 
 
 	vpackages.editionView()
-        .title('<h4>Vod Packages <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.package_name }}</h4>')   
+        .title('<h4>Vod Packages <i class="fa fa-angle-right" aria-hidden="true"></i> Edit: {{ entry.values.package_name }}</h4>')
         .actions(['list'])
         .fields([
             nga.field('package_name', 'string')
@@ -67,7 +67,7 @@ export default function (nga, admin) {
             nga.field('template')
                 .label('')
                 .template(edit_button),
-            
+
             nga.field('Vod films', 'referenced_list')
                     .label('Vods')
                     .targetEntity(admin.getEntity('Vods'))
@@ -106,8 +106,57 @@ export default function (nga, admin) {
                                   //'<div class="btn btn-small"><ma-create-button entity-name="vodPackages" class="pull-right" label="ADD VOD" default-values="{ package_id: entry.values.id }"></ma-create-button></div> '+
                                 '</div>'+
                             '</div>'),
+        ])
+
+
+        .fields([
+            nga.field('Series', 'referenced_list')
+                .label('Serials')
+                .targetEntity(admin.getEntity('Series'))
+                .targetReferenceField('package_id')
+                .targetFields([
+                    nga.field('icon_url', 'file')
+                        .template('<img src="{{ entry.values.icon_url }}" height="35" width="35" />')
+                        .cssClasses('hidden-xs')
+                        .label('Icon'),
+                    nga.field('title', 'string')
+                        .label('Title'),
+     /*             nga.field('tv_series_categories','reference_many')
+                        .targetEntity(admin.getEntity('VodCategories'))
+                        .targetField(nga.field('name'))
+                        .singleApiCall(function (category_id) {
+                            return { 'category_id[]': category_id };
+                        }).label('Genres'),
+                    nga.field('tv_series_packages','reference_many')
+                        .targetEntity(admin.getEntity('Packages'))
+                        .perPage(-1)
+                        .permanentFilters({ package_type_id: [3,4] })
+                        .targetField(nga.field('package_name'))
+                        .singleApiCall(function (package_id) {
+                            return { 'package_id[]': package_id };
+                        }).label('Packages'),*/
+                    nga.field('rate', 'number')
+                        .attributes({ placeholder: 'Rate' })
+                        .validation({ required: true })
+                        .label('Rate'),
+                    nga.field('clicks', 'number')
+                        .attributes({ placeholder: 'TV Shows clicks' })
+                        .validation({ required: true })
+                        .label('Clicks'),
+                    nga.field('is_available', 'boolean')
+                        .cssClasses('hidden-xs')
+                        .label('Available'),
+                ])
+                .perPage(15),
+            nga.field('template')
+                .label('')
+                .template('<div class="row">'+
+                    '<div class="btn-group inline pull-right"> '+
+                    '<div class="btn btn-small"><ma-filtered-list-button entity-name="Series" class="pull-right" label="SEE ALL SERIALS" filter="{ vod_id: entry.values.id }"></ma-filtered-list-button></div> '+
+                    '</div>'+
+                    '</div>'),
         ]);
-   
+
     return vpackages;
 
 }

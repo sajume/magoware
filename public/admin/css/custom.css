@@ -462,9 +462,9 @@ body {
 }
 p#company_name {
     color: #41434d;
-    position: relative;
-    top: 9px;
     font-weight: 700;
+    width: auto;
+    white-space: nowrap;
 }
 .navbar-default {
     background-color: #fff ;
@@ -734,6 +734,11 @@ body > div.image-modal > div > div {
     fill-opacity: 0;
     stroke-width: 2px;
     stroke: #03A9F3 !important;
+}
+
+.graph-blue {
+    /*background: #03A9F3 !important;*/
+    color: #03A9F3;
 }
 .group0Style > div > div.vis-panel.vis-left > div.vis-content > div > svg > path.vis-graph-group0.vis-icon-fill {
     fill: #00C292 !important;

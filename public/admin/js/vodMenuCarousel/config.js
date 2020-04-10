@@ -69,17 +69,93 @@ export default function(nga, admin) {
         .attributes({ placeholder: 'Order' })
         .validation({ required: true })
         .label('Order'),
-      nga
-        .field('url', 'string')
-        .defaultValue('')
-        .validation({ required: true })
-        .attributes({ placeholder: 'Url' })
-        .label('Url'),
+
+        nga.field('url', 'choice')
+            .attributes({ placeholder: 'Choose from dropdown list the Carousel Category that this carousel will belong to' })
+            .validation({
+                validator: function(value) {
+                    if (value === null || value === '') {
+                        throw new Error('Please Select Carousel Category')
+                    }
+                },
+                 required: true
+            })
+            .choices([
+                { value: '/apiv3/vod/vod_list', label: 'All Movies' },
+                { value: '/apiv3/vod/mostwatched', label: 'Most Watched' },
+                { value: '/apiv3/tv_show/tv_show_list', label: 'Tv Shows' }
+            ])
+            .validation({ required: true })
+            .label('Carousel Category Menu'),
+
+
+        nga.field('category_id', 'reference')
+            .targetEntity(admin.getEntity('VodCategories'))
+            .targetField(nga.field('name'))
+            .isDetailLink(false)
+            .label('Carousel Category Name '),
       nga
         .field('isavailable', 'boolean')
         .attributes({ placeholder: 'Is Available' })
         .validation({ required: true })
         .label('Is Available'),
+
+        nga
+            .field('pin_protected','boolean')
+            .attributes({ placeholder: 'Pin Protected' })
+            .validation({ required: true })
+            .label('Pin Protected Movie'),
+
+        nga
+            .field('adult_content', 'boolean')
+            .attributes({ placeholder: 'Has adult content' })
+            .validation({ required: true })
+            .label('Has adult content '),
+
+
+/*        nga.field('adult_content', 'choice')
+            .defaultValue(false)
+            .validation({ required: true })
+            .choices([
+                { value: true, label: 'Yes' },
+                { value: false, label: 'No' }
+            ])
+            .attributes({ placeholder: 'Choose from dropdown list' })
+            .label('Has adult content'),*/
+
+
+        nga.field('order_by', 'choice')
+            .attributes({ placeholder: 'Choose from dropdown list a specified field to order by ' })
+            .defaultValue('createdAt')
+            .choices([
+                { value: 'clicks', label: 'clicks' },
+                { value: 'rate', label: 'rate' },
+                { value: 'expiration_time', label: 'expiration time' },
+                { value: 'release_date', label: 'release date' },
+                { value: 'price', label: 'price' },
+                { value: 'duration', label: 'duration' },
+                { value: 'createdAt', label: 'creation date' },
+            ])
+            .validation({ required: false })
+            .label('Order Items '),
+
+
+        nga.field('order_dir', 'choice')
+            .attributes({ placeholder: 'Choose from dropdown list order direction field  ' })
+            .defaultValue('desc')
+            .choices([
+                { value: 'desc', label: 'descending' },
+                { value: 'asc', label: 'ascending' }
+            ])
+            .validation({ required: false })
+            .label('Order Direction'),
+
+/*        nga
+            .field('url', 'string')
+            .defaultValue('')
+            .validation({ required: true })
+            .attributes({ placeholder: 'Url' })
+            .label('Url'),*/
 
       nga
         .field('template')

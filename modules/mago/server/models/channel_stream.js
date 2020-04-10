@@ -54,6 +54,10 @@ module.exports = function(sequelize, DataTypes) {
             type: DataTypes.STRING(255),
             allowNull: true
         },
+        token_provider: {
+            type: DataTypes.STRING(10),
+            allowNull: true
+        },
         encryption: {
             type: DataTypes.BOOLEAN,
             allowNull: false

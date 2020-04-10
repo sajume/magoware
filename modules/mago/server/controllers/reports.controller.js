@@ -358,17 +358,13 @@ exports.listExpireSubcriptionByDay = function (req, res) {
 
 exports.activeDevices = function (req, res) {
     let company_id = req.token.company_id ? req.token.company_id : 1;
-    dbRaporte.sequelize.query("SELECT * FROM (select id, DATE(createdAt)as date,COUNT(id) as total, appid "+
-        "from devices where device_active = 1 and createdAt >= MAKEDATE(year(now()),1) and company_id = "+ company_id +
-        " AND appid = 1 GROUP BY YEAR (createdAt), MONTH (createdAt) ASC "+
-        "UNION ALL select id, DATE(createdAt)as date,COUNT(id) as total, appid "+
-        "From devices where device_active = 1 and createdAt >= MAKEDATE(year(now()),1) AND appid = 2 "+
-        "GROUP BY YEAR (createdAt), MONTH (createdAt) ASC  "+
-        "UNION ALL select id, DATE(createdAt)as date,COUNT(id) as total, appid "+
-        "From devices where device_active = 1 and createdAt >= MAKEDATE(year(now()),1) AND appid = 3 "+
-        "GROUP BY YEAR (createdAt), MONTH (createdAt) ASC)a "+
-        "ORDER BY date",
-        {type: dbRaporte.sequelize.QueryTypes.SELECT})
+    dbRaporte.sequelize.query(`SELECT *
+        FROM (select id, DATE(createdAt) as date, COUNT(id) as total, appid
+      from devices
+      where createdAt >= DATE_SUB(now(), INTERVAL 12 MONTH)
+        and company_id = ?
+      GROUP BY YEAR(createdAt), MONTH(createdAt), appid) a;`,
+        {type: dbRaporte.sequelize.QueryTypes.SELECT, replacements: [company_id]})
         .then(function (results) {
             if (!results) {
                 return res.status(404).send({
@@ -386,10 +382,10 @@ exports.activeDevices = function (req, res) {
 
 exports.listLastTwoYearsSales = function (req, res) {
     let company_id = req.token.company_id ? req.token.company_id : 1;
-    dbRaporte.sequelize.query(" select DATE(saledate)as date," +
+    dbRaporte.sequelize.query(" select DATE(saledate) as date," +
         " COUNT(saledate) AS total from salesreport" +
-        " where saledate BETWEEN CURDATE() - INTERVAL 24 MONTH AND CURDATE() AND company_id = " + company_id +
-        " GROUP BY MONTH(saledate)" +
+        " where saledate >= DATE_FORMAT(CURDATE(), '%Y-%m-01') - INTERVAL 24 MONTH and company_id = " + company_id +
+        " group by month(saledate), year(saledate)" +
         " ORDER BY saledate ",
         {type: dbRaporte.sequelize.QueryTypes.SELECT})
         .then(function (results) {

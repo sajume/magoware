@@ -8,7 +8,8 @@ var path = require('path'),
     db = require(path.resolve('./config/lib/sequelize')).models,
     winston = require('winston'),
     refresh = require(path.resolve('./modules/mago/server/controllers/common.controller.js')),
-    DBModel = db.channel_stream;
+    DBModel = db.channel_stream,
+    streamStore = require(path.resolve('./config/lib/stream_store'));
 
 /**
  * Create
@@ -20,7 +21,13 @@ exports.create = function(req, res) {
         if (!result) {
             return res.status(400).send({message: 'fail create data'});
         } else {
-            return res.jsonp(result);
+            return streamStore.loadChannelStreamsToRedis(req.token.company_id, result.channel_id)
+              .then(function() {
+                res.jsonp(result);
+              })
+            .catch(function(err) {
+              res.status(500).send({message: "Loading channel streams to redis failed"});
+            })
         }
     }).catch(function(err) {
         winston.error("Creating the channel stream failed with error: ", err);
@@ -47,7 +54,13 @@ exports.update = function(req, res) {
 
     if(req.channelStream.company_id === req.token.company_id){
         updateData.updateAttributes(req.body).then(function(result) {
-            res.json(result);
+            return streamStore.loadChannelStreamsToRedis(req.token.company_id, result.channel_id)
+              .then(function() {
+                res.json(result);
+              })
+              .catch(function(err) {
+                res.status(500).send({message: "Loading channel streams to redis failed"});
+              })
         }).catch(function(err) {
             winston.error("Updating the channel stream failed with error: ", err);
             return res.status(400).send({
@@ -72,7 +85,13 @@ exports.delete = function(req, res) {
             if (result && (result.company_id === req.token.company_id)) {
                 // Delete the article
                 result.destroy().then(function() {
-                    return res.json(result);
+                    return streamStore.loadChannelStreamsToRedis(req.token.company_id, result.channel_id, true)
+                      .then(function() {
+                        res.json(result);
+                      })
+                      .catch(function(err) {
+                        res.status(500).send({message: "Loading channel streams to redis failed"});
+                      })
                 }).catch(function(err) {
                     winston.error("Deleting the channel stream failed with error: ", err);
                     return res.status(400).send({

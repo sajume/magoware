@@ -66,16 +66,12 @@ export default function (nga, admin) {
                 .template(modalImageUpload)
                 .validation({
                     validator: function(value) {
-                        if (value == null) {
-                            throw new Error('Please, choose icon');
-                        }else {
-                            var icon_url = document.getElementById('icon_url');
-                            if (icon_url.value.length > 0) {
-                                if(icon_url.files[0].size > 614400 ){
-                                    throw new Error('Your Icon is too Big, not larger than 600 KB');
-                                }
-                            }
-                        }
+						var icon_url = document.getElementById('icon_url');
+						if (icon_url.value.length > 0) {
+							if(icon_url.files[0].size > 614400 ){
+								throw new Error('Your Icon is too Big, not larger than 600 KB');
+							}
+						}
                     }
                 })
                 .label('Icon *'),
@@ -95,16 +91,12 @@ export default function (nga, admin) {
                     <div class="row"><small id="emailHelp" class="form-text text-muted">120x120 px, not larger than 200 KB</small></div>`)
                 .validation({
                     validator: function(value) {
-                        if (value == null) {
-                            throw new Error('Please, choose your small icon');
-                        }else {
-                            var small_icon_url = document.getElementById('small_icon_url');
-                            if (small_icon_url.value.length > 0) {
-                                if(small_icon_url.files[0].size > 153600 ){
-                                    throw new Error('Your Small Icon is too Big, not larger than 150 KB');
-                                }
-                            }
-                        }
+						var small_icon_url = document.getElementById('small_icon_url');
+						if (small_icon_url.value.length > 0) {
+							if(small_icon_url.files[0].size > 153600 ){
+								throw new Error('Your Small Icon is too Big, not larger than 150 KB');
+							}
+						}
                     }
                 })
                 .label('Small icon *'),

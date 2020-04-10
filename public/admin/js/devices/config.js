@@ -5,7 +5,7 @@ export default function (nga, admin) {
 	devices.listView()
 		.title('<h4>Devices <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>')
 		.batchActions([
-            '<sendpush type="softwareupdate" selection="selection"></sendpush>',
+            '<sendpush type="SOFTWARE_INSTALL" selection="selection"></sendpush>',
 			'<sendpush type="deletedata" selection="selection"></sendpush>',
 			'<sendpush type="deletesharedpreferences" selection="selection"></sendpush>'
         ])
@@ -55,6 +55,8 @@ export default function (nga, admin) {
 						return 'Samsung';
 					} else if (value === 6) {
 						return 'Apple TV';
+					} else if(value === 7) {
+						return 'Web Smart TV';
 					}
 				})
 				.label('App'),
@@ -90,6 +92,7 @@ export default function (nga, admin) {
 							 {value: 4, label: 'Stv'},
 							 {value: 5, label: 'Samsung'},
 							 {value: 6, label: 'Apple TV'},
+							 {value: 7, label: 'Web Smart TV'}
 						 ])
            	  .attributes({ placeholder: 'App Id' })
         	  .label('App ID'),

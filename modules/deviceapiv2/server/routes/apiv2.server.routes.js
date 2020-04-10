@@ -22,8 +22,8 @@ var path = require('path'),
     deviceepgController = require(path.resolve('./modules/deviceapiv2/server/controllers/deviceepg.server.controller')),
     thisrequestController = require(path.resolve('./modules/deviceapiv2/server/controllers/_this_request.server.controller')),
     geoipLogic = require(path.resolve('./modules/geoip/server/controllers/geoip_logic.server.controller')),
-    cache = require('apicache'),
-    winston = require(path.resolve('./config/lib/winston'));
+    winston = require(path.resolve('./config/lib/winston')),
+    cache = require(path.resolve('./config/lib/cache'));
 
 module.exports = function(app) {
 
@@ -78,14 +78,14 @@ module.exports = function(app) {
         .post(deviceepgController.epg);
 
     app.route('/apiv2/channels/event')
-        .post(authpolicy.isAllowed)
-        .post(deviceepgController.event);
+        //.post(authpolicy.isAllowed)
+        .post(deviceepgController.forwardPostEpgEventsToGet);
 
-    app.route('/apiv2/channels/event')
-        .get(deviceepgController.get_event)
+    app.get('/apiv2/channels/event', [authpolicy.decodeAuth, deviceepgController.attachTimezoneToUrl, cache.middleware(120000)], deviceepgController.get_event)
         
     app.route('/apiv2/channels/event/:channelId')
       .all(authpolicy.isAllowed)
+      .all(cache.middleware(120000))
       .get(deviceepgController.event_get);
 
     app.route('/apiv2/channels/daily_epg')
@@ -139,18 +139,18 @@ module.exports = function(app) {
 
     //main device menu
     app.route('/apiv2/main/device_menu')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.verifyToken)
         .get(mainController.device_menu_get)
         .post(mainController.device_menu);
 
     //main device menu with two levels - level1
     app.route('/apiv2/main/device_menu_levelone')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.verifyToken)
         .get(mainController.get_devicemenu_levelone);
 
     //main device menu with two levels - level2
     app.route('/apiv2/main/device_menu_leveltwo')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.verifyToken)
         .get(mainController.get_devicemenu_leveltwo);
 
 
@@ -291,7 +291,7 @@ module.exports = function(app) {
 
     /* ===== QR CODE ===== */
     app.route('/apiv2/qrcode')
-        // .all(authpolicy.isAllowed)
+        .all(authpolicy.isAllowed)
         .post(mainController.get_qrCode);
 
     //LOGIN FORM TEMPLATE

@@ -7,6 +7,8 @@
     "url": "git://bitbucket.org/magoware/magoware-backoffice.git"
   },
   "dependencies": {
+    "axios": "^0.19.2",
+    "phantomjs": "^2.1.7",
     "vis": "^4.20.1"
   },
   "devDependencies": {

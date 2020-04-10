@@ -132,7 +132,7 @@ export default [
             [
                 {
                     "entity":"Salesreports",
-                    "title":"Salesreports",
+                    "title":"Subscription Activation",
                     "icon":'<span class="fa fa-list fa-fw dashboard_icon"></span>',
                     "link":'/Salesreports/list',
                     "group_roles":["admin","finance"]
@@ -144,19 +144,19 @@ export default [
                 "group_roles":["admin","finance"]
             },{
                 "entity":"sales_by_date",
-                "title":"Sales By Day",
+                "title":"Subscriptions By Day",
                 "icon":'<span class="fa fa-list fa-fw dashboard_icon"></span>',
                 "link":'/sales_by_date/list',
                 "group_roles":["admin","finance"]
             },{
                 "entity":"sales_by_month",
-                "title":"Sales By Month",
+                "title":"Activations By Month",
                 "icon":'<span class="fa fa-list fa-fw dashboard_icon"></span>',
                 "link":'/sales_by_month/list',
                 "group_roles":["admin","finance"]
             },{
                 "entity":"sales_monthly_expiration",
-                "title":"Account Expiration By Month",
+                "title":"Expiration By Month",
                 "icon":'<span class="fa fa-list fa-fw dashboard_icon"></span>',
                 "link":'/sales_monthly_expiration/list',
                 "group_roles":["admin","finance"]
@@ -453,6 +453,12 @@ export default [
             "link":'/ApiKeys/edit/1',
             "group_roles":["admin","IT"]
         },{
+            "entity":"Webhooks",
+            "title":"Webhooks",
+            "icon":'<span class="fa fa-assistive-listening-systems fa-fw dashboard_icon"></span>',
+            "link":'/webhooks/create',
+            "group_roles":["admin","IT"]
+        },{
             "title":"API Parameters",
             "icon":'<span class="fa fa-cog fa-fw dashboard_icon"></span>',
             "group_roles":["admin","IT"],
@@ -469,7 +475,7 @@ export default [
             {
                 "entity":"Settings",
                 "title":"Other",
-                "icon":'<span class="fa fa-cog fa-fw dashboard_icon"></span>',
+                "icon":'<i class="fa fa-assistive-listening-systems fa-fw dashboard_icon"></i>',
                 "link":'/Settings/edit/1',
                 "group_roles":["admin","IT"]
             }]
@@ -581,13 +587,6 @@ export default [
                 "group_roles":["admin","audit","IT"],
                 "children": [],
                 "link":'/logs/list'
-            },
-            {
-                "title":"Server Status",
-                "icon":'<span class="fa fa-server fa-fw dashboard_icon"></span>',
-                "group_roles":["admin","audit","IT"],
-                "children": [],
-                "link":'/serverStatus'
             }
         ]
     },

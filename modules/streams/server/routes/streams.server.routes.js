@@ -8,29 +8,38 @@ var path = require('path'),
     tokenGenerators = require(path.resolve('./modules/streams/server/controllers/token_generators.server.controller.js')),
     catchupfunctions = require(path.resolve('./modules/streams/server/controllers/catchup_functions.server.controller.js')),
     keyDelivery = require(path.resolve('./modules/streams/server/controllers/streamkeydelivery.server.controller.js')),
-    encryptionFunctions = require(path.resolve('./modules/streams/server/controllers/encryption_functions.server.controller.js'));
+    encryptionFunctions = require(path.resolve('./modules/streams/server/controllers/encryption_functions.server.controller.js')),
+    ezdrm = require(path.resolve('modules/streams/server/controllers/ezdrm.server.controller.js'));
 
 
 module.exports = function(app) {
 
     app.route('/apiv2/token/akamaitokenv2hdnts/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.akamai_token_v2_generator_hdnts)
         .post(tokenGenerators.akamai_token_v2_generator_hdnts);
 
     app.route('/apiv2/token/akamaitokenv2/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.akamai_token_v2_generator)
         .post(tokenGenerators.akamai_token_v2_generator);
 
     app.route('/apiv2/token/akamaitokenv2extraquery/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.akamai_token_v2_generator_extraquery)
         .post(tokenGenerators.akamai_token_v2_generator_extraquery);
 
 
     app.route('/apiv2/token/catchupakamaitokenv2/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.catchup_akamai_token_v2_generator)
         .post(tokenGenerators.catchup_akamai_token_v2_generator);
 
@@ -40,30 +49,43 @@ module.exports = function(app) {
     //    .post(tokenGenerators.akamai_token_v2_generator_tibo_mobile);
 
     app.route('/apiv2/token/flussonic/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.flussonic_token_generator)
         .post(tokenGenerators.flussonic_token_generator);
 
     app.route('/apiv2/token/nimble/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.nimble_token_generator)
         .post(tokenGenerators.nimble_token_generator);
 
     app.route('/apiv2/token/verizon/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.handleGenerateTokenJson)
         .post(tokenGenerators.handleGenerateTokenJson);
+        
     app.route('/apiv2/drm/nimble')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.nimble_drm_key);
 
     app.route('/apiv2/catchup/flussonic')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .post(catchupfunctions.flussonic_catchup_stream);
 
     //generate token for wowza streaming server
     app.route('/apiv2/token/generatewowzatoken/*')
-        .all(authpolicy.isAllowed)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
         .get(tokenGenerators.wowza_token_generator)
         .post(tokenGenerators.wowza_token_generator);
 
@@ -82,4 +104,16 @@ module.exports = function(app) {
     app.route('/apiv2/generic/getinternalkey')
         .get(keyDelivery.generate_internal_key);
 
+    app.route('/apiv2/drm/ezdrm/license/:cid')
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
+        .get(ezdrm.issueLicense)
+
+    app.route('/apiv2/drm/ezdrm/authorize')
+        .all(ezdrm.extractAuth)
+        .all(authpolicy.oneTimeAccessToken)
+        .all(authpolicy.verifyToken)
+        .all(authpolicy.expiryToken)
+        .get(ezdrm.authorize)
 };

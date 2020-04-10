@@ -16,7 +16,7 @@ exports.init = function (app) {
     //   profile), and invoke a callback with a user object.
     passport.use(new GoogleStrategy({
             clientID: '1021674888438-rif577k1tl24i690k25c2fv584ig7pci.apps.googleusercontent.com',
-            clientSecret: 'ebmud6lsGZRQvZ4NkO3GYH5C',
+            clientSecret: '',
             callbackURL: '/api/auth/google/callback',
             passReqToCallback: true,
             proxy: true

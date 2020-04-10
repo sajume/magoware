@@ -64,13 +64,6 @@ export default function (nga, admin) {
 							'<ma-input-field field="field" value="entry.values.company_name"></ma-input-field>'+
 							'<small id="emailHelp" class="form-text text-muted">Set your company name (By default - MAGOWARE)</small>'+
 							'</div>'),
-            nga.field('locale', 'string')
-				.validation({ required: true })
-				.label('Locale')
-				.template('<div class="form-group">'+
-						'<ma-input-field field="field" value="entry.values.locale"></ma-input-field>'+
-						'<small id="emailHelp" class="form-text text-muted">User interface language (not in use).</small>'+
-						'</div>'),
             nga.field('allow_guest_login','boolean')
                 .label('')
 				.template('<form ng-app="myApp" ng-controller="checkboxController">'+
@@ -87,6 +80,10 @@ export default function (nga, admin) {
                 .template(edit_button),
 
             //HIDDEN FROM UI
+            nga.field('locale', 'string')
+                .validation({ required: false })
+                .cssClasses('hidden')
+                .label(''),
 			nga.field('updatedAt', 'datetime')
                 .cssClasses('hidden')
                 .editable(false)

@@ -107,6 +107,7 @@ module.exports = function(sequelize, DataTypes) {
         associate: function(models) {
             Devices.belongsTo(models.login_data, {foreignKey: 'login_data_id'});
             Devices.belongsTo(models.settings, {foreignKey: 'company_id'});
+            Devices.belongsTo(models.app_group, {foreignKey: 'appid'});
         }
     });
     return Devices;

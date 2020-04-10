@@ -52,6 +52,7 @@ exports.create = function(req, res) {
     var yOffset = 1;
     var duration = (req.body.duration) ? req.body.duration.toString() : "5000"; //default value 5000ms
     var link_url = (req.body.link_url) ? req.body.link_url : "";
+    var imageGif = (req.body.imageGif) ? req.body.imageGif : "";
     var type = (req.body.type) ? req.body.type : 'textonly';
     var delivery_time = (!req.body.delivery_time) ? 0 : moment(req.body.delivery_time).format('x') - moment(Date.now()).format('x');
     if(req.body.xOffset) var xOffset =  req.body.xOffset;
@@ -69,8 +70,8 @@ exports.create = function(req, res) {
     }
     else return res.status(400).send({ message: "You did not select any device types" });
 
-    if(!req.body.imageGif) res.status(400).send({ message: "You have to add an image link for the ad" });
-    else var imageGif = req.body.imageGif;
+    /*if(!req.body.imageGif) res.status(400).send({ message: "You have to add an image link for the ad" });
+    else var imageGif = req.body.imageGif;*/
 
     var no_users = !!(req.body.all_users !== true && req.body.username === null); //no users selected, don't send push
     var no_device_type = !!(!device_types || device_types.length < 1); //no device types selected, don't send push
@@ -132,11 +133,12 @@ exports.list = function(req, res) {
 };
 
 function send_ad(where, title, message,  imageGif, xOffset, yOffset, duration, link_url, activity, firebase_key, res, type){
+
     DBDevices.findAll(
         {
-            attributes: ['googleappid', 'appid', 'app_version'],
+            attributes: ['googleappid', 'app_version', 'appid', 'login_data_id'],
             where: where,
-            include: [{model: db.login_data, attributes: ['username'], required: true, raw: true, where: {get_messages: true}}]
+            include: [{model: db.login_data, attributes: ['username', 'id'], required: true, raw: true, where: {get_messages: true}}]
         }
     ).then(function(devices) {
         if (!(!devices || devices.length === 0)) {
@@ -144,10 +146,12 @@ function send_ad(where, title, message,  imageGif, xOffset, yOffset, duration, l
             var users = [];
             for(var i=0; i<devices.length; i++){
                 var push_object = new push_msg.CUSTOM_TOAST_PUSH(title, message, type, imageGif, xOffset, yOffset, duration, link_url, activity);
-                push_msg.send_notification(devices[i].googleappid, firebase_key, devices[i].login_datum.dataValues.username, push_object, 5, true, true, function(devices) {
+                push_msg.send_notification(devices[i].googleappid, firebase_key, devices[i].login_datum.dataValues.username, push_object, 5, true, true, devices[i].login_datum.dataValues.id ,function(devices) {
                     console.log("We are here at ad callback", devices)
                 });
             }
         }
+
+
     });
 }

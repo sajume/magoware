@@ -6,6 +6,7 @@ var path = require('path'),
     dateFormat = require('dateformat'),
     moment = require('moment'),
     response = require(path.resolve("./config/responses.js")),
+    eventSystem = require(path.resolve("./config/lib/event_system.js")),
     winston = require(path.resolve('./config/lib/winston'));
 
 
@@ -204,6 +205,20 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                     });
 
                 }).then(function (result) {
+  /*                  var response = {};
+                    response = { transaction_id:result[result.length-1].dataValues.transaction_id }*/
+
+                    var response = {}
+                    response = {transaction_id: transaction_id}
+                    let eventType;
+
+                    if(sale_or_refund == 1)
+                    { eventType = eventSystem.EventType.Subscription_Created}
+                     else
+                    { eventType = eventSystem.EventType.Subscription_Canceled};
+
+                    eventSystem.emit(req.token.company_id, eventType, response)
+
                     return {
                         status: true,
                         transaction_id: transaction_id,

@@ -18,37 +18,9 @@ var path = require('path'),
 //todo: advanced_Settgins duhet hequr dhe kaluar ne redis
 module.exports = function(app,   db) {
     settings.init(app);
-    app.locals.backendsettings = {};
-
-    let subscriber = redis.client.duplicate();
-    subscriber.on('message', function(channel, message) {
-        redis.client.get(message + ':company_settings', function(err, raw_company_settings) {
-            let company_settings = JSON.parse(raw_company_settings);
-            if(!app.locals.backendsettings[message].already_updated) {
-                let expire_date = new Date(company_settings.expire_date);
-                delete company_settings.expire_date;
-                company_settings.expire_date = expire_date;
-                delete app.locals.backendsettings[message];
-                app.locals.backendsettings[message] = company_settings;
-            }
-            else {
-                delete app.locals.backendsettings[message].already_updated;
-            }
-        });
-    });
-
-    subscriber.subscribe('event:company_settings_updated');
-
-    settings_DBModel.findAll({
-
-    }).then(function (results) {
-        for(let i = 0; i < results.length; i++) {
-            let settingsId = results[i].id + ":company_settings";
-            app.locals.backendsettings[results[i].id] = results[i];
-            let settingsRaw = JSON.stringify(results[i].toJSON())
-            redis.client.set(settingsId, settingsRaw);
-        }
-
+    
+    settings.loadCompanySettings()
+    .then(function () {
         return settings.loadAdvancedSettings()
         .then(function () {
             winston.info("Advanced settings loaded")
@@ -72,7 +44,7 @@ module.exports = function(app,   db) {
             process.exit(1);
         });
     }).catch(function(error) {
-        winston.error('error reading database settings: ',error);
+        winston.error('Loading backend settings failed with error',error);
     });
 
 };

@@ -73,17 +73,19 @@ export default function (nga, admin){
     subscription.creationView()
         .title('<h4>Subscriptions <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Subscription</h4>')
         .fields([
-            nga.field('login_id', 'reference')
-                .targetEntity(admin.getEntity('LoginData'))
+            nga.field('login_id', 'reference_many')
+                .targetEntity(admin.getEntity('CustomerAccount'))
                 .targetField(nga.field('username'))
                 .attributes({ placeholder: 'Choose Username from dropdown list' })
                 .validation({validator: function(value) {
-                        if(value === null || value === ''){
-                            throw new Error('Please Select Username');
-                        }
+                	//value.length > 1 because of reference_many
+                	if(value.length > 1){
+                        throw new Error('Please select only one username');
+					}else if (value === null || value === '') {
+                        throw new Error('Please select username');
+					}
                     }
                 })
-                .perPage(-1)
                 .remoteComplete(true, {
                     refreshDelay: 300,
                     // populate choices from the response of GET /posts?q=XXX
@@ -107,11 +109,12 @@ export default function (nga, admin){
                 .targetEntity(admin.getEntity('userAvailable'))
                 .targetField(nga.field('username'))
                 .remoteComplete(true, {
-                    refreshDelay: 300,
+
                     // populate choices from the response of GET /posts?q=XXX
                     searchQuery: function(search) { return { q: search }; }
                 })
                 .perPage(10) // limit the number of results to 10
+                .validation({ required: true })
                 .label('On Behalf Id'),
 			nga.field('start_date','date')
                 .attributes({ placeholder: 'Start date' })

@@ -31,7 +31,7 @@ export default function($stateProvider) {
 
                     $scope.options = {
                         style: 'bar',
-                        barChart: { width: 50, align: 'center' }, // align: left, center, right
+                        barChart: { width: 20, align: 'center' }, // align: left, center, right
                         drawPoints: false,
                         dataAxis: {
                             icons: true
@@ -44,7 +44,7 @@ export default function($stateProvider) {
                         end: new Date().setDate(
                             new Date(res[res.length - 1].date).getDate() + 185
                         ),
-                        zoomable: false
+                        zoomable: true
                     };
                     const mapData = (items, id) => {
                         return items.map(item => {

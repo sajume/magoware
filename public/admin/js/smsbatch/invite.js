@@ -36,7 +36,9 @@ function invite(Restangular, $uibModal, $q, notification, $state,$http) {
                             '<div class="row">'+
                                 '<form>'+
                                     '<div class="form-group" style="padding: 20px;">'+
-                                        '<input type="text" id="emailinput" class="form-control" placeholder="Please enter the email address you want to invite" id="email">'+
+                                        '<input type="text" id="emailinput" class="form-control" placeholder="Please enter the email address you want to invite" id="email"><br /> '+
+                                        '<input type="text" id="firstnameinput" class="form-control" placeholder="Please enter first name of the user" id="firstname"><br />'+
+                                        '<input type="text" id="lastnameinput" class="form-control" placeholder="Please enter last name of the user" id="lastname"><br />'+
                                     '</div>'+
                                 '</form>'+
                             '</div>'+
@@ -77,11 +79,13 @@ function invite(Restangular, $uibModal, $q, notification, $state,$http) {
 
                         $scope.ok = function () {
                             var email = document.getElementById('emailinput').value;
+                            var firstname = document.getElementById('firstnameinput').value;
+                            var lastname = document.getElementById('lastnameinput').value;
 
                             if ($scope.group_id >= 0){
                                 if (email.length > 0){
 
-                                    var data = { 'email': email,'group_id': $scope.group_id };
+                                    var data = { 'email': email,'firstname': firstname, 'lastname': lastname,'group_id': $scope.group_id, };
                                     $http.post("../api/users/invite", data).then(function successCallback(response) {
 
                                         new Promise(function(resolve, reject) {

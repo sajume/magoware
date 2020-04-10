@@ -23,7 +23,8 @@ const config = require('../config'),
     securityConfig = require('../security/exprees.security.config'),
     policy = require(path.resolve('./modules/mago/server/policies/mago.server.policy')),
     morgan = require('morgan'),
-    uuid = require('uuid');
+    uuid = require('uuid'),
+    url = require('url');
 
 //documentation
 //docs = require("express-mongoose-docs");
@@ -101,6 +102,17 @@ module.exports.initMiddleware = function (app) {
             windowMs: 60 * 1000, // 15 minutes
             max: securityConfig.rate_limit.max_request_min, // limit each IP to 100 requests per windowMs
             handler: function(req, res, next) {
+                //Check route white list
+                let pathName = url.parse(req.originalUrl).pathname;
+
+                let whiteRoutes = securityConfig.rate_limit.route_whitelist;
+                for (let i = 0; i < whiteRoutes.length; i++) {
+                    if (pathName.startsWith(whiteRoutes[i])) {
+                        next();
+                        return;
+                    }
+                }
+            
                 let ip = req.ip.substring(req.ip.lastIndexOf(':') + 1, req.ip.length);
                 if (securityConfig.rate_limit.ip_whitelist.indexOf(ip) !== -1) {
                     next();
@@ -292,7 +304,7 @@ module.exports.initErrorRoutes = function (app) {
 /**
  * Configure Socket.io
 */
-
+//
 module.exports.configureSocketIO = function (app, db) {
     winston.info('Initializing Socket.io...');
     // Load the Socket.io configuration
@@ -302,45 +314,6 @@ module.exports.configureSocketIO = function (app, db) {
     return server;
 };
 
-module.exports.initExpressStatusMonitor = function (app) {
-    const io = require('socket.io');
-    io.listen(3000);
-
-    let config = {
-        title: 'Express Status',  // Default title
-        theme: 'default.css',     // Default styles
-        path: '',
-        websocket: io,
-        spans: [
-            {
-                interval: 1,            // Every second
-                retention: 60           // Keep 60 datapoints in memory
-            },
-            {
-                interval: 5,            // Every 5 seconds
-                retention: 60
-            },
-            {
-                interval: 15,           // Every 15 seconds
-                retention: 60
-            }
-        ],
-        chartVisibility: {
-            cpu: true,
-            mem: true,
-            load: true,
-            responseTime: true,
-            rps: true,
-            statusCodes: true
-        },
-        healthChecks: [],
-        ignoreStartsWith: '/admin'
-    }
-    const monitor = require('express-status-monitor')(config);
-
-    app.use(monitor.middleware);
-    app.get('/status', monitor.pageRoute);
-}
 /**
  * Configure server response languages
  */
@@ -384,9 +357,6 @@ module.exports.init = function (db, redis) {
     // Initialize local variables
     this.initLocalVariables(app);
 
-    //Init Express Monitor Status
-    this.initExpressStatusMonitor(app);
-
     // Initialize Express middleware
     this.initMiddleware(app);
 
@@ -394,7 +364,7 @@ module.exports.init = function (db, redis) {
     this.initViewEngine(app);
 
     // Initialize Express session
-    this.initSession(app, db);
+    //this.initSession(app, db);
 
     // Initialize Modules configuration
     this.initModulesConfiguration(app);

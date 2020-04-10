@@ -27,6 +27,18 @@ module.exports = function(app) {
         .put(vodController.reaction)
         .post(vodController.reaction);
 
+    app.route('/apiv3/vod/resume_position/:vod_id/:resume_position')
+        .all(authpolicy.isAllowed)
+        .put(vodController.resume_position);
+
+    app.route('/apiv3/vod/favorite/:vod_id/:favorite')
+        .all(authpolicy.isAllowed)
+        .put(vodController.favorite);
+
+  /*  app.route('/apiv3/vod/percentage_position/:vod_id/:percentage_position')
+        .all(authpolicy.isAllowed)
+        .put(vodController.percentage_position);*/
+
     app.route('/apiv3/vod/vod_related/:vod_id')
         .all(authpolicy.isAllowed)
         .get(vodController.get_related_movies);
@@ -55,6 +67,22 @@ module.exports = function(app) {
     app.route('/apiv3/vod/mostwatched')
         .all(authpolicy.isAllowed)
         .get(vodController.get_vod_list);
+
+    app.route('/apiv3/vod/favorite_movies')
+        .all(authpolicy.isAllowed)
+        .get(vodController.get_favorite_movies);
+
+    app.route('/apiv3/vod/paused_movies')
+        .all(authpolicy.isAllowed)
+        .get(vodController.get_paused_movies);
+
+    app.route('/apiv3/vod/navigated_movies')
+        .all(authpolicy.isAllowed)
+        .get(vodController.get_navigated_movies);
+
+    app.route('/apiv3/vod/added_movies')
+        .all(authpolicy.isAllowed)
+        .get(vodController.get_added_movies);
 
     app.route('/apiv3/vod/purchase_list')
         .all(authpolicy.isAllowed)

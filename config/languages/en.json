@@ -15,6 +15,7 @@
         "DUAL_LOGIN_ATTEMPT_DESCRIPTION": "DUAL_LOGIN_ATTEMPT",
         "DUAL_LOGIN_ATTEMPT_DATA": "You are logged in on another device. Do you want to log out from other devices and login on this one?",
         "DATABASE_ERROR_DESCRIPTION": "DATABASE_ERROR",
+        "CHANNEL_NOT_FOUND" : "Channel not found",
         "DATABASE_ERROR_DATA": "Error connecting to database",
         "EMAIL_SENT_DESCRIPTION": "EMAIL_SENT",
         "EMAIL_SENT_DATA": "Email successfuly sent",

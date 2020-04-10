@@ -198,24 +198,14 @@ export default function (nga, admin) {
 
                     }
                 }),
-
             nga.field('background_video_url', 'string')
                 .validation({ required: false })
                 .attributes({ placeholder: 'Background Video Url' })
                 .label('Background Video Url'),
-
             nga.field('background_video_duration','number')
                 .validation({ required: false })
                 .attributes({ placeholder: 'Background Video Duration' })
                 .label('Background Video Duration'),
-
-            nga.field('company_name', 'string')
-                .validation({ required: true })
-                .label('Company name')
-                .template('<div>'+
-                    '<ma-input-field field="field" value="entry.values.company_name"></ma-input-field>'+
-                    '<small id="emailHelp" class="form-text text-muted">Set your company name (By default - MAGOWARE)</small>'+
-                    '</div>'),
             nga.field('company_logo', 'file')
                 .label('Company logo *')
                 .template(`<div class="row">
@@ -247,18 +237,20 @@ export default function (nga, admin) {
 
                     }
                 }),
-
-            nga.field('locale', 'string')
-                .validation({ required: true })
-                .label('Locale')
-                .template('<div>'+
-                    '<ma-input-field field="field" value="entry.values.locale"></ma-input-field>'+
-                    '<small id="emailHelp" class="form-text text-muted">User interface language (not in use).</small>'+
-                    '</div>'),
-
             nga.field('template')
                 .label('')
                 .template(edit_button),
+
+            //hidden fields
+            nga.field('company_name', 'string')
+                .cssClasses('hidden')
+                .validation({ required: false })
+                .label(''),
+
+            nga.field('locale', 'string')
+                .cssClasses('hidden')
+                .validation({ required: false })
+                .label('')
 
         ]);
 

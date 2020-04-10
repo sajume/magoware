@@ -13,9 +13,9 @@ const path = require('path'),
     DBModel = db.settings,
     sequelize = require('sequelize'),
     config = require(path.resolve('./config/config')),
-    redis = require(path.resolve('./config/lib/redis')),
     companyFunctions = require(path.resolve('./custom_functions/company')),
-    userFunctions = require(path.resolve('./custom_functions/user'));
+    userFunctions = require(path.resolve('./custom_functions/user')),
+    settings = require(path.resolve('./custom_functions/settings'));
 
 const sequelize_t = require(path.resolve('./config/lib/sequelize'));
 const jwt = require('jsonwebtoken'),
@@ -150,19 +150,15 @@ exports.update = function (req, res) {
     };
 
     req.settings.updateAttributes(new_settings).then(function (result) {
-        //refresh company settings in app memory
-        delete req.app.locals.backendsettings[result.id];
-        result.already_updated = true;
-        req.app.locals.backendsettings[result.id] = result;
-
-        redis.client.set(req.token.company_id + ':company_settings', JSON.stringify(new_settings), function () {
-            redis.client.publish('event:company_settings_updated', req.token.company_id)
-        });
-
-        return res.json(result);
+        return req.settings.reload()
+            .then(function() {
+                settings.updateCompanySettings(req.settings);
+                res.json(settings);
+            });
+        
     }).catch(function (err) {
         winston.error("Updating setting failed with error: ", err);
-        return res.status(400).send({
+        res.status(400).send({
             message: errorHandler.getErrorMessage(err)
         });
     });

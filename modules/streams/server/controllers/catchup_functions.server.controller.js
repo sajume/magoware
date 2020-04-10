@@ -3,7 +3,8 @@ var path = require('path'),
     response = require(path.resolve("./config/responses.js")),
     errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
     db = require(path.resolve('./config/lib/sequelize')),
-    models = db.models;
+    models = db.models,
+    winston = require('winston');
 const querystring = require('querystring');
 
 

@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const rimraf = require('rimraf');
-const winston = require('../config/lib/winston');
+const winston = require('winston');
 
-const types = ['xml', 'csv'];
+const types = ['xml', 'csv', 'png', 'm3u8', 'ods', 'mp4'];
 
-const fileLifeInDays = 10;
+const fileLifeInDays = 7;
 const refreshRateInHours = 3; //every x hours we check for files that we want to delete
 const folder = path.resolve('public/files/temp');
 

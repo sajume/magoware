@@ -206,10 +206,10 @@ exports.read = function(req, res) {
         url: 'https://api.themoviedb.org/3/movie/'+id,
         qs:
             { language: 'en-US',
-                api_key: 'e76289b7e0306b6e6b6088148b804f01',
+                api_key: 'fe4104e791060715f23f1244a51b926a',
                 append_to_response: 'credits,videos'
-            },
-        body: '{}' };
+            }
+    };
 
 
     request(options, function (error, response, body) {
@@ -263,13 +263,16 @@ exports.list = function(req, res) {
 
     if(parseInt(query._start)) page = parseInt(query._start);
 
-    var options = { method: 'GET',
+    const options = {
+        method: 'GET',
         url: 'https://api.themoviedb.org/3/search/movie',
-        qs:
-            { page: page,
-                query: query.q,
-                api_key: 'e76289b7e0306b6e6b6088148b804f01' },
-        body: '{}' };
+        qs: {
+            page: page,
+            query: query.q,
+            api_key: 'fe4104e791060715f23f1244a51b926a',
+            language: "en-US"
+        }
+    };
 
     request(options, function (error, response, body) {
         if (error) throw new Error(error);

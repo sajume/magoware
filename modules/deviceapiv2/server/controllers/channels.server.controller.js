@@ -134,7 +134,7 @@ exports.list = function(req, res) {
                 ],
                 order: [[ 'channel_number', 'ASC' ]]
             }).then(function (result) {
-                var user_channel_list = [];
+                /*var user_channel_list = [];
 
                 for (var i = 0; i < my_channel_list.length; i++) {
                     var temp_obj = {};
@@ -156,7 +156,7 @@ exports.list = function(req, res) {
                     temp_obj.is_octoshape = 0;
                     temp_obj.favorite_channel = "0";
                     user_channel_list.push(temp_obj)
-                }
+                }*/
 
                 for (var i = 0; i < result.length; i++) {
                     result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i]["icon_url"];
@@ -174,8 +174,8 @@ exports.list = function(req, res) {
                     result[i].favorite_channel = result[i]["favorite_channels.id"] ? "1":"0"; delete result[i]["favorite_channels.id"];
                 }
 
-                var response_data = result.concat(user_channel_list);
-                response.send_res(req, res, response_data, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
+                //var response_data = result.concat(user_channel_list);
+                response.send_res(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
             }).catch(function(error) {
                 winston.error("Searching for the users list of channels failed with error: ", error);
                 response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
@@ -282,7 +282,7 @@ exports.list_get = function(req, res) {
                 ],
                 order: [[ 'channel_number', 'ASC' ]]
             }).then(function (result) {
-                var user_channel_list = [];
+                /*var user_channel_list = [];
 
                 for (var i = 0; i < my_channel_list.length; i++) {
                     var temp_obj = {};
@@ -304,7 +304,7 @@ exports.list_get = function(req, res) {
                     temp_obj.is_octoshape = 0;
                     temp_obj.favorite_channel = "0";
                     user_channel_list.push(temp_obj)
-                }
+                }*/
 
                 for (var i = 0; i < result.length; i++) {
                     result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i]["icon_url"];
@@ -322,8 +322,8 @@ exports.list_get = function(req, res) {
                     result[i].favorite_channel = result[i]["favorite_channels.id"] ? "1":"0"; delete result[i]["favorite_channels.id"];
                 }
 
-                var response_data = result.concat(user_channel_list);
-                response.send_res_get(req, res, response_data, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
+                //var response_data = result.concat(user_channel_list);
+                response.send_res_get(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
 
             }).catch(function(error) {
                 winston.error("Searching for the users list of channels failed with error: ", error);

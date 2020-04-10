@@ -6,73 +6,75 @@ export default function($stateProvider) {
     url: '/epggraph',
     params: {},
 
-    //controller: ['Restangular', '$scope', 'notification', (Restangular, $scope, notification) => {
-
     controller: function(Restangular, $scope, VisDataSet) {
-      $scope.events = {
-        //rangechange: $scope.onRangeChange,
-        //rangechanged: $scope.onRangeChanged,
-        //onload: $scope.onLoaded,
-        select: $scope.onSelect,
-        click: $scope.onClick
-        //doubleClick: $scope.onDoubleClick,
-        //contextmenu: $scope.rightClick
-      }
+      $scope.page = 0;
+      $scope.visiblePrevPageButton = false;
+      $scope.visibleNextPageButton = true;
 
-      $scope.onSelect = function(items) {
-        // debugger;
-        winston.info('onselect: ', items)
-      }
-
-      $scope.onClick = function(items) {
-        //debugger;
-        winston.info('click: ', items)
-      }
-
-      $scope.dragEnd = function(items) {
-        //debugger;
-        winston.info('drag end: ', items)
-      }
-
-      $scope.onRangeChange = function(items) {
-        //debugger;
-        winston.info('enter onrangechange: ', items)
-      }
 
       $scope.options = {
         stack: false,
         start: new Date(),
         end: new Date(1000 * 60 * 60 * 24 + new Date().valueOf()),
-        editable: true,
+        editable: false,
         orientation: 'top',
-
         // right order
         groupOrder: function(a, b) {
-          return a.value - b.value
+          return b.channel_number - a.channel_number;
+        },
+      };
+
+      $scope.loadMore = function(p) {
+        if($scope.page - 1 < 0 && !p) {
+          $scope.visiblePrevPageButton = false;
+          return;
+        } else {
+          $scope.visiblePrevPageButton = true;
         }
-      }
 
-      $scope.events = {
-        //rangechange: $scope.onRangeChange,
-        //rangechanged: $scope.onRangeChanged,
-        //onload: $scope.onLoaded,
-        select: $scope.onSelect,
-        click: $scope.onClick,
-        dragEnd: $scope.dragEnd
-        //doubleClick: $scope.onDoubleClick,
-        //contextmenu: $scope.rightClick
-      }
+        if($scope.page + 1 > $scope.total_pages && p) {
+          $scope.visibleNextPageButton = false;
+          return;
+        } else {
+          $scope.visibleNextPageButton = true;
+        }
 
-      Restangular.one('epgdata_chart')
+        $scope.page = p ? $scope.page + 1 : $scope.page - 1;
+
+        if($scope.page === 0) {
+          $scope.visiblePrevPageButton = false;
+        }
+
+        if($scope.page === $scope.total_pages) {
+          $scope.visibleNextPageButton = false;
+        }
+
+        Restangular.one(`epgdata_chart?page=${$scope.page}`)
+          .get()
+          .then(
+            function successCallback(response) {
+              $scope.data_timeline = {
+                items: response.data ? response.data.items : response.items,
+                groups: response.data ? response.data.groups : response.groups
+              }
+            },
+            function errorCallback(response) {}
+          )
+      };
+
+      Restangular.one(`epgdata_chart?page=${$scope.page}`)
         .get()
         .then(
           function successCallback(response) {
             $scope.data_timeline = {
               items: response.data ? response.data.items : response.items,
               groups: response.data ? response.data.groups : response.groups
-            }
+            };
+            $scope.total_pages = response.data ? response.data.total_pages : response.total_pages
           },
-          function errorCallback(response) {}
+          function errorCallback(response) {
+            console.error("There has been an error at getting epg data, error: ", response);
+          }
         )
     },
 

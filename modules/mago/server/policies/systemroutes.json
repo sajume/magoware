@@ -75,6 +75,7 @@
   "/api/vodpackages/:packageId",
   "/api/salesreports",
   "/api/salesreports/:salesReportId",
+  "/api/salesreports/cancel/:salesReportId",
   "/api/dash/salesreports",
   "/api/settings",
   "/api/settings/:settingId",

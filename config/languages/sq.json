@@ -62,6 +62,7 @@
     "TRAILER": "Trailer",
     "THUMBUP": "Pëlqe",
     "THUMBDOWN": "Mos pëlqe",
-    "COMING_SOON": "Së shpejti"
+    "COMING_SOON": "Së shpejti",
+    "CHANNEL_NOT_FOUND" : "Kanali nuk u gjet"
   }
 }

@@ -40,7 +40,7 @@ const rootCompany = {
 };
 
 const superadminGroup = { name: 'Superadmin', code: 'superadmin', isavailable: 1, company_id: -1 };
-const superadminUser = { username: 'superadmin', hashedpassword: 'superadmin', isavailable: 1, company_id: -1 };
+const superadminUser = { username: 'superadmin', hashedpassword: 'superadmin', isavailable: 1, company_id: -1, firstname: 'superadmin', lastname: 'superadmin' };
 
 exports.createCompany = function (req) {
     return new Promise(function (resolve, reject) {
@@ -163,12 +163,8 @@ exports.createCompany = function (req) {
                     });
                 });
             }).then(function (result) {
-                req.app.locals.backendsettings[ownerUser.company_id] = new_company_data;
-                settings.updateAdvancedSettings(advanced_settings);
-
-                let rawCompanySettings = JSON.stringify(new_company_data);
-                redis.client.set(new_company_data.id + ':company_settings', rawCompanySettings);
-                
+                settings.updateCompanySettings(new_company_data);
+                settings.updateAdvancedSettings(advanced_settings);                
                 resolve({ company: new_company_data, owner: ownerUser });
             }).catch(function (err) {
                 winston.error('Company creation failed with error: ', err)

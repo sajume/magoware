@@ -252,8 +252,7 @@ export default function (nga, admin) {
                 .validation({ required: true })
                 .label('Is Available'),
             nga.field('expiration_time','datetime')
-                .validation({ required: true })
-                .defaultValue(new Date())
+                .defaultValue('3018-01-01 00:00:00')
                 .label('Expiration date'),
             nga.field('mandatory_ads', 'choice')
                 .defaultValue(false)
@@ -420,8 +419,7 @@ export default function (nga, admin) {
                 .validation({ required: true })
                 .label('Is Available'),
             nga.field('expiration_time','datetime')
-                .validation({ required: true })
-                .defaultValue(new Date())
+                .defaultValue('3018-01-01 00:00:00')
                 .label('Expiration date'),
             nga.field('mandatory_ads', 'choice')
                 .defaultValue(false)

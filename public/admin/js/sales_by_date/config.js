@@ -1,7 +1,7 @@
 export default function (nga, admin) {
     var salesreport = admin.getEntity('sales_by_date');
     salesreport.listView()
-        .title('<h4>Sales per day <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>')
+        .title('<h4>Subscriptions by day <i class="fa fa-angle-right" aria-hidden="true"></i> List</h4>')
         .batchActions([])
         .fields([
             nga.field('saledate', 'date')

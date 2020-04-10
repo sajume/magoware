@@ -11,6 +11,7 @@ const path = require('path'),
     subscription_functions = require(path.resolve('./custom_functions/sales.js')),
     customerFunctions = require(path.resolve('./custom_functions/customer_functions.js')),
     responses = require(path.resolve("./config/responses.js")),
+    eventSystem = require(path.resolve("./config/lib/event_system.js")),
     db = require(path.resolve('./config/lib/sequelize')).models,
     Sequelize = require('sequelize'),
     DBModel = db.login_data,
@@ -49,11 +50,12 @@ exports.create_customer_with_login = function(req,res) {
             if(limit_reached === true) return res.status(400).send({message: "You have reached the limit number of client accounts you can create for this plan. "});
             else{
                 customerFunctions.create_customer_with_login(req,res).then(function(data) {
+                    eventSystem.emit(req.token.company_id, eventSystem.EventType.Customer_Created, data);
                     if(data.status) {
-                        res.status(200).send(data.message);
+                        res.status(200).send({message: data.message});
                     }
                     else {
-                        res.status(400).send(data.message);
+                        res.status(400).send({message: data.message});
                     }
                 });
             }
@@ -192,7 +194,23 @@ exports.dataByID = function(req, res) {
 };
 
 
-exports.updateClient = function(req, res){
+exports.updateClient = async function(req, res){
+
+    try {
+        const customer = await db.customer_data.find({
+            where: {
+                email: req.body.customer_datum.email,
+                id: {$not: req.body.customer_datum.id}
+            }
+        });
+        if(customer) {
+            return res.status(400).send({message: "Cannot update user because email already exists"});
+        }
+    } catch (e) {
+        winston.error("Error at checking for existing email on update, error: ", e);
+        return res.status(400).send({message: "Error at checking for existing email"});
+    }
+
 
     //login_data record needs to be updated as an instance for the beforeHook to work
     db.login_data.findOne({
@@ -210,6 +228,7 @@ exports.updateClient = function(req, res){
             });
         }).then(function (result) {
             // Transaction has been committed
+            eventSystem.emit(req.token.company_id, eventSystem.EventType.Customer_Updated, result);
             return res.jsonp({status: 200, message: "Customer updated successfully"});
         }).catch(function (error) {
             // Transaction has been rolled back

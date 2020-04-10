@@ -33,7 +33,7 @@ var path = require('path'),
  * @apiParam {String} [email_address] Company settings
  * @apiParam {String} [email_username] Company settings
  * @apiParam {String} [email_password] Company settings
- * @apiSuccess (200) {JSON} data Response data
+ * @apiSuccess (200) {Object[]} data Response data
  * @apiSuccess {String} data.message Message
  * @apiError (40x) {Object} error Error-Response
  * @apiError {Number} error.code Code
@@ -56,9 +56,10 @@ exports.createCompany = function (req, res) {
             }).catch(function (err) {
                 res.status(500).send({ error: {code: 500, message: 'Company created but failed to send invitation'}})
             })
-        }).catch(function (result) {
-            res.status(result.error.code).send(result);
-        });
+        }).catch(function(error) {
+        winston.error('Create company failed with error: ' + error)
+        res.status(500).send({error: {code: 500, message: 'Internal error'}})
+    });
 }
 
 /**
@@ -67,7 +68,7 @@ exports.createCompany = function (req, res) {
  * @apiName UpdateCompany
  * @apiGroup Company
  * @apiVersion  0.2.0
- * 
+ *
  * @apiParam (Path parameter) {Number} id Id of the company
  * @apiParam (Query parameters) {String} apikey Authorization key as query parameter
  * @apiParam {String} [company_name] Company name
@@ -81,7 +82,7 @@ exports.createCompany = function (req, res) {
  * @apiParam {String} [email_address] Company settings
  * @apiParam {String} [email_username] Company settings
  * @apiParam {String} [email_password] Company settings
- * 
+ *
  * @apiSuccess (200) {Object}  data Response data
  * @apiSuccess {String} data.message Message
  * @apiError (40x) {Object} error Error-Response
@@ -102,7 +103,7 @@ exports.updateCompany = function (req, res) {
         where: { id: req.params.id }
     }).then(function (company) {
         if (!company) {
-            res.status(404).send({ error: { code: 404, message: 'Commpany not found' } });
+            res.status(404).send({ error: { code: 404, message: 'Company not found' } });
             return;
         }
 
@@ -118,6 +119,67 @@ exports.updateCompany = function (req, res) {
         res.status(500).send({ error: { code: 500, message: 'Internal error' } });
     });
 }
+
+
+/**
+ *
+ * @api {post} /api/public/company/:id Update Company
+ * @apiName UpdateCompany
+ * @apiGroup Company
+ * @apiVersion  0.2.0
+ *
+ * @apiParam (Path parameter) {Number} id Id of the company
+ * @apiParam (Query parameters) {String} apikey Authorization key as query parameter
+ * @apiParam {String} [company_name] Company name
+ * @apiParam {String} [mobile_background_url] Company settings
+ * @apiParam {String} [mobile_logo_url] Company settings
+ * @apiParam {String} [box_logo_url] Company settings
+ * @apiParam {String} [box_background_url] Company settings
+ * @apiParam {String} [vod_background_url] Company settings
+ * @apiParam {String} [assets_url] Company settings
+ * @apiParam {String} [company_logo] Company settings
+ * @apiParam {String} [email_address] Company settings
+ * @apiParam {String} [email_username] Company settings
+ * @apiParam {String} [email_password] Company settings
+ *
+ * @apiSuccess (200) {Object}  data Response data
+ * @apiSuccess {String} data.message Message
+ * @apiError (40x) {Object} error Error-Response
+ * @apiError {Number} error.code Code
+ * @apiError {String} error.message Message description of error
+ * @apiSuccessExample {Json} Success-Response:
+ * HTTP/1.1 200 OK
+ * {
+ *     "data" : {
+ *          message : 'Company updated successfully'
+ *     }
+ * }
+ *
+ *
+ */
+exports.updateCompany = function (req, res) {
+    db.settings.findOne({
+        where: { id: req.params.id }
+    }).then(function (company) {
+        if (!company) {
+            res.status(404).send({ error: { code: 404, message: 'Company not found' } });
+            return;
+        }
+
+        company.update(req.body)
+            .then(function () {
+                res.send({ data: { message: 'Company updated successfully' } });
+            }).catch(function (err) {
+            winston.error('Company update failed with error: ', err);
+            res.status(500).send({ error: { code: 500, message: 'Internal error' } });
+        });
+    }).catch(function (err) {
+        winston.error('Getting company failed with error: ', err);
+        res.status(500).send({ error: { code: 500, message: 'Internal error' } });
+    });
+}
+
+
 
 /**
  * 

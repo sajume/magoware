@@ -1,5 +1,5 @@
 // var logger = require('logzio-nodejs').createLogger({
-//     token: "bydnmyPsSYWJyqwVTLKJqhUzjdtexWbA",
+//     token: '',
 //     host: 'listener-eu.logz.io',
 //     type: 'MAGOWARE BACKOFFICE'     // OPTIONAL (If none is set, it will be 'nodejs')
 // });

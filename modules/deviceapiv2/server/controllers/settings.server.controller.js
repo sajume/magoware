@@ -142,9 +142,9 @@ exports.settings = function (req, res) {
                         }
                     }
                     //kontrollo nqs ka mbetur te pakten nje sekonde deri ne 1 dite (ne sekonda)
-                    if (seconds_left > 0 && seconds_left < 86400) {
+                    /*if (seconds_left > 0 && seconds_left < 86400) {
                         schedule.end_subscription(req.thisuser.id, seconds_left * 1000, [req.auth_obj.appid], req.auth_obj.screensize, req.body.activity, req.app.locals.backendsettings[req.thisuser.company_id].firebase_key); //create push task for the ending of this type of subscription
-                    }
+                    }*/
 
                     const daysleft = Math.ceil(Number(Math.ceil(seconds_left / 86400).toFixed(0)));
                     callback(null, login_data, daysleft, seconds_left, refresh);
@@ -471,9 +471,9 @@ exports.get_settings = function (req, res) {
         }
 
         //kontrollo nqs ka mbetur te pakten nje sekonde deri ne 1 dite (ne sekonda)
-        if (seconds_left > 0 && seconds_left < 86400) {
+        /*if (seconds_left > 0 && seconds_left < 86400) {
             schedule.end_subscription(req.thisuser.id, seconds_left * 1000, [req.auth_obj.appid], req.auth_obj.screensize, req.body.activity, req.app.locals.backendsettings[req.thisuser.company_id].firebase_key); //create push task for the ending of this type of subscription
-        }
+        }*/
 
         const daysleft = Math.ceil(Number(Math.ceil(seconds_left / 86400).toFixed(0)));
 
@@ -526,7 +526,7 @@ exports.get_settings = function (req, res) {
 
 
         models.app_management.findOne({
-            attributes: ['id', 'title', 'description', 'url', 'isavailable', 'updatedAt', 'availability_denominator'],
+            attributes: ['id', 'title', 'description', 'url', 'isavailable', 'updatedAt'],
             limit: 1,
             where: {
                 beta_version: { in: get_beta_app },
@@ -540,16 +540,20 @@ exports.get_settings = function (req, res) {
             order: [['updatedAt', 'DESC']] //last updated record
         }).then(function (result) {
             if (result) {
+                let upgradePolicy = req.app.locals.advanced_settings[req.thisuser.company_id].upgrade_policy;
                 let upgradeAvailable = false;
-                let threshold = 1.0 / result.availability_denominator;
-                if (threshold < 1) {
-                    let coeff = Math.random();
-                    if (coeff <= threshold) {
+                
+                if (insideClockInterval(upgradePolicy.availability_interval)) {
+                    let threshold = 1.0 / upgradePolicy.availability_denominator;
+                    if (threshold < 1) {
+                        let coeff = Math.random();
+                        if (coeff <= threshold) {
+                            upgradeAvailable = true;
+                        }
+                    } 
+                    else {
                         upgradeAvailable = true;
                     }
-                } 
-                else {
-                    upgradeAvailable = true;
                 }
                 
                 if (upgradeAvailable) {
@@ -586,3 +590,14 @@ exports.get_settings = function (req, res) {
         res.send(error);
     });
 };
+
+function insideClockInterval(clocks) {
+    let startHour = clocks[0][0];
+    let startMinutes = clocks[0][1];
+    let endHour = clocks[1][0];
+    let endMinutes = clocks[1][1];
+
+    let now = new Date(Date.now());
+
+    return now.getHours() >= startHour && now.getMinutes() >= startMinutes && now.getHours() <= endHour && now.getMinutes() >= endMinutes;
+}

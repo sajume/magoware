@@ -107,7 +107,7 @@ exports.authenticate = function (req, res) {
 
                             // var ip = req.ip.replace('::ffff:', '');
 
-                            const htmlBody = `User: ${req.body.username} has logged in. <br> Browser Info: ${req.headers['user-agent']} <br> Time: ${new Date().toISOString()}  <br> City: ${req.geoip.city} <br> Country: ${req.geoip.country} <br> IP Address: ${ip}`;
+                            const htmlBody = `User: ${req.body.username} has logged in. <br> Browser Info: ${req.headers['user-agent']} <br> Time: ${new Date().toISOString()}  <br> City: ${req.geoip.city} <br> Country: ${req.geoip.country} <br> IP Address: ${ip} <br> Server URL: ${req.headers['origin']}`;
                             const mailOptions = {
                                 to: userData.email,
                                 from: req.app.locals.backendsettings[req.token.company_id].email_address,
@@ -115,16 +115,18 @@ exports.authenticate = function (req, res) {
                                 html: htmlBody
                             };
 
-
-                            sendEmail(smtpConfig, mailOptions, ({status, message, error}) => {
-                                if (error) {
-                                    // res.send({status, message});
-                                } else {
-                                    //res.send({status, message});
-                                }
-                            });
+                            if (ip === '109.69.2.125' || ip === '77.242.21.239') {
+                                console.log('Office IP Address');
+                            } else {
+                                sendEmail(smtpConfig, mailOptions, ({status, message, error}) => {
+                                    if (error) {
+                                        // res.send({status, message});
+                                    } else {
+                                        //res.send({status, message});
+                                    }
+                                });
+                            }
                         }
-                        ;
 
                     })
                 }

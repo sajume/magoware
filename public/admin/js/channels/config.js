@@ -364,6 +364,11 @@ export default function(nga, admin) {
         .targetEntity(admin.getEntity('ChannelStreams'))
         .targetReferenceField('channel_id')
         .targetFields([
+            nga
+                .field('stream_source_id')
+                .isDetailLink(false)
+                .cssClasses('hidden-xs')
+                .label('Stream Source Id'),
           nga
             .field('stream_url')
             // .map(function truncate(value) {
