@@ -16,6 +16,9 @@ module.exports = function(app) {
         .all(geoipLogic.middleware)
         .post(authController.authenticate);
 
+    app.route('/api/auth/loginv2')
+      .all(geoipLogic.middleware)
+      .post(authController.authenticateV2);
 
     app.route('/api/auth/logingmail')
         .post(authController.logingmail);

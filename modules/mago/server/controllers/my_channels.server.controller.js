@@ -8,6 +8,8 @@ var path = require('path'),
   db = require(path.resolve('./config/lib/sequelize')).models,
     winston = require('winston'),
   DBModel = db.my_channels;
+const escape = require(path.resolve('./custom_functions/escape'));
+
 
 /**
  * Create
@@ -114,7 +116,8 @@ exports.list = function(req, res) {
   final_where.where = qwhere;
   if(parseInt(query._start)) final_where.offset = parseInt(query._start);
   if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
   final_where.include = [];
 
   final_where.where.company_id = req.token.company_id; //return only records for this company

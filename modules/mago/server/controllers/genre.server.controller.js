@@ -11,6 +11,9 @@ var path = require('path'),
     winston = require('winston'),
     fs = require('fs');
 
+const escape = require(path.resolve('./custom_functions/escape'));
+
+
 /**
  * Create
  */
@@ -135,12 +138,13 @@ exports.list = function(req, res) {
   final_where.where = qwhere;
   if(parseInt(query._start)) final_where.offset = parseInt(query._start);
   if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
 
   final_where.include = [{model:db.models.channels,  required: true}];
 
     DBModel.findAndCountAll({
-        attributes: ['id', 'description', 'icon_url', 'is_available', 'order', 'pin_protected'],
+        attributes: ['id', 'description', 'icon_url', 'is_available', 'order', 'pin_protected', 'is_adult'],
         where: {company_id: req.token.company_id},
         include: [{
             model: db.models.channels, required: false,

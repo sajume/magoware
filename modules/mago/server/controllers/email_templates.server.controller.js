@@ -10,6 +10,8 @@ var path = require('path'),
     db = require(path.resolve('./config/lib/sequelize')).models,
     DBModel = db.email_templates;
 
+const escape = require(path.resolve('./custom_functions/escape'));
+
 /**
  * Create
  */
@@ -111,7 +113,8 @@ exports.list = function(req, res) {
     final_where.where = qwhere;
     if(parseInt(query._start)) final_where.offset = parseInt(query._start);
     if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
     final_where.include = [];
     //end build final where
 

@@ -91,6 +91,10 @@ export default function(nga, admin) {
 
         nga.field('category_id', 'reference')
             .targetEntity(admin.getEntity('VodCategories'))
+            .remoteComplete(true, {
+                refreshDelay: 300,
+                searchQuery: function(search) { return { q: search }; }
+            })
             .targetField(nga.field('name'))
             .isDetailLink(false)
             .label('Carousel Category Name '),

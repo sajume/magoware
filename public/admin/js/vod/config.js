@@ -593,8 +593,11 @@ export default function (nga, admin) {
                 .targetEntity(admin.getEntity('vodstreams'))
                 .targetReferenceField('vod_id')
                 .targetFields([
-                    nga.field('stream_source_id')
-                        .label('Stream Source Id'),
+                    nga.field('stream_source_id', 'reference')
+                        .targetEntity(admin.getEntity('VodStreamSources'))
+                        .targetField(nga.field('description'))
+                        .isDetailLink(false)
+                        .label('Stream Source'),
                     nga.field('url')
                         .label('Vod URL'),
                     nga.field('stream_type', 'string')

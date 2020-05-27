@@ -49,6 +49,11 @@ module.exports = function(sequelize, DataTypes) {
             allowNull: false,
             defaultValue: 1
         },
+        catchup_mode: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: 0
+        },
         isavailable: {
             type: DataTypes.BOOLEAN,
             allowNull: false,

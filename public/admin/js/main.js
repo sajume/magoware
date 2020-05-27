@@ -360,8 +360,12 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
             const res = response.data ? response.data : response;
 
             $scope.options = {
+                style:'bar',
+                barChart: {align:'center', width: 40}, // align: left, center, right
                 drawPoints: {
-                    style: 'circle' // square, circle
+                    onRender: function(item, group, grap2d) {
+                        return item.label != null;
+                    }
                 },
                 shaded: {
                     orientation: 'bottom' // top, bottom
@@ -372,15 +376,21 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
                 orientation: 'top',
                 start: new Date().toISOString(),
                 end: new Date().setDate(
-                  new Date().getDate() + 31
+                  new Date().getDate() + 10
                 ),
-                zoomable: false
+                zoomable: true
             };
             const mapData = items => {
                 return items.map(item => {
                     return {
                         x: new Date(item.to_date),
-                        y: item.total
+                        y: item.total,
+                        label: {
+                            content: item.total,
+                            className: "graph-blue",
+                            xOffset: 0,
+                            yOffset: -7
+                        }
                     }
                 })
             };
@@ -395,9 +405,16 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
             const res = response.data ? response.data : response;
 
             $scope.options2 = {
+                style:'bar',
+                barChart: {align:'center', width: 40}, // align: left, center, right
                 drawPoints: {
-                    style: 'circle' // square, circle
+                    onRender: function(item, group, grap2d) {
+                        return item.label != null;
+                    }
                 },
+                // drawPoints: {
+                //     style: 'circle' // square, circle
+                // },
                 shaded: {
                     orientation: 'bottom' // top, bottom
                 },
@@ -405,9 +422,9 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
                     icons: true
                 },
                 orientation: 'top',
-                start: res.length !== 0 ? res[0].date : new Date().toISOString(),
-                end: res.length !== 0 ? res[res.length - 1].date : new Date().setDate(
-                  new Date().getDate() + 31
+                start: res.length !== 0 ? res[0].to_date : new Date().toISOString(),
+                end: new Date().setDate(
+                  new Date().getDate() + 300
                 ),
                 zoomable: true
             };
@@ -416,7 +433,13 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
                 return items.map(item => {
                     return {
                         x: item.to_date,
-                        y: item.total
+                        y: item.total,
+                        label: {
+                            content: item.total,
+                            className: "graph-blue",
+                            xOffset: 0,
+                            yOffset: -7
+                        }
                     }
                 })
             };
@@ -432,7 +455,7 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
 
             $scope.options3 = {
                 style:'bar',
-                barChart: {width:20, align:'center'}, // align: left, center, right
+                barChart: {align:'center'}, // align: left, center, right
                 drawPoints: {
                     onRender: function(item, group, grap2d) {
                         return item.label != null;
@@ -446,10 +469,10 @@ myApp.controller('expireGraphCtr', function ($scope, Restangular) {
                 },
                 orientation: 'top',
                 start: (res && res.length !== 0) ? res[0].date : new Date().toISOString(),
-                end: (res && res.length !== 0) ? res[res.length - 1].date : new Date().setDate(
-                  new Date().getDate() - 720
+                end: new Date().setDate(
+                  new Date().getDate() - 70
                 ),
-                zoomable: false
+                zoomable: true
             };
 
             const mapData = items => {
@@ -637,6 +660,7 @@ myApp.directive('approveInvitation', require('./smsbatch/approveInvitation'));
 myApp.directive('cancelSubscription', require('./smsbatch/cancelSubscription'));
 myApp.directive('importchannelLogs', require('./import_channels_csv_m3u/see_logs_import_channel'));
 myApp.directive('importvodLogs', require('./import_vod_csv/see_logs_import_vod'));
+myApp.directive('remoteLogin', require('./smsbatch/remoteLogin'));
 
 //myApp.directive('roles', require('./grouprights/radioRoles'));
 

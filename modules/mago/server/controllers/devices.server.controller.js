@@ -7,9 +7,10 @@ const path = require('path'),
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
   winston = require('winston'),
   db = require(path.resolve('./config/lib/sequelize')).models,
-  DBModel = db.devices;
+  DBModel = db.devices,
+  geoip = require(path.resolve('./modules/geoip/server/controllers/geoip_logic.server.controller.js'));
 
-const Reader = require('@maxmind/geoip2-node').Reader;
+const escape = require(path.resolve('./custom_functions/escape'));
 
 /**
  * Create
@@ -128,7 +129,8 @@ exports.list = function (req, res) {
   final_where.where = qwhere;
   if (parseInt(query._start)) final_where.offset = parseInt(query._start);
   if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
-  if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
   final_where.include = [];
 
   if (query.login_data_id) qwhere.login_data_id = query.login_data_id;
@@ -153,17 +155,24 @@ exports.list = function (req, res) {
     } else {
       res.setHeader("X-Total-Count", results.count);
 
-      Reader.open(path.resolve('public/files/geoip/GeoLite2-City.mmdb'))
+      geoip.getDatabaseReader()
         .then(function (reader) {
           for (let i = 0; i < results.rows.length; i++) {
-            const geoInfo = reader.city(results.rows[i].device_ip).city;
-            results.rows[i].dataValues.city = geoInfo.names ? geoInfo.names.en : "";
+            let city;
+            if (reader) {
+              try {
+                city = reader.city(results.rows[i].device_ip).city;
+              } catch (e) {
+                city = {names: {en: ""}}
+              }
+            }
+            else {
+              city = {names: {en: "Service unavailable"}}
+            }
+            results.rows[i].dataValues.city = city.names ? city.names.en : "";
           }
           res.json(results.rows)
-        }).catch(e => {
-        winston.error("Error at reading geoip file at devices, error: ", e)
-        return res.status(500).jsonp({message: e});
-      });
+        });
     }
   }).catch(function (err) {
     winston.error("Getting device list failed with error: ", err);

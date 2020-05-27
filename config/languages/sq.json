@@ -63,6 +63,7 @@
     "THUMBUP": "Pëlqe",
     "THUMBDOWN": "Mos pëlqe",
     "COMING_SOON": "Së shpejti",
-    "CHANNEL_NOT_FOUND" : "Kanali nuk u gjet"
+    "CHANNEL_NOT_FOUND" : "Kanali nuk u gjet",
+    "USER_PARAMETER_MISSING": "Parametri username mungon"
   }
 }

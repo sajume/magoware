@@ -20,6 +20,8 @@ var path = require('path'),
   winston = require(path.resolve('./config/lib/winston'));
 
 var download = require('download-file');
+const escape = require(path.resolve('./custom_functions/escape'));
+
 
 /**
  * Create
@@ -87,7 +89,8 @@ exports.epg_import = function (req, res) {
   final_where.where = qwhere;
   if (parseInt(query._start)) final_where.offset = parseInt(query._start);
   if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
-  if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
   final_where.include = [];
   //end build final where
 
@@ -219,7 +222,8 @@ exports.list = function (req, res) {
   final_where.where = qwhere;
   if (parseInt(query._start)) final_where.offset = parseInt(query._start);
   if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
-  if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
   final_where.include = [];
   //end build final where
 

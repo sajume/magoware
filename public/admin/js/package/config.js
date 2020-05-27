@@ -36,7 +36,12 @@ export default function (nga, admin) {
                 .targetEntity(admin.getEntity('packagetypes'))
                 .targetField(nga.field('description'))
                 .attributes({ placeholder: 'Select Package Type' , readOnly: true})
-                .validation({ required: true })
+                .validation({validator: function(value) {
+                        if(value === null || value === ''){
+                            throw new Error('Please Select Package Type');
+                        }
+                    }
+                })
                 .label('Package Type'),
             nga.field('template')
                 .label('')

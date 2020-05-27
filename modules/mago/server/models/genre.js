@@ -26,6 +26,11 @@ module.exports = function(sequelize, DataTypes) {
             type: DataTypes.BOOLEAN,
             allowNull: false
         },
+        is_adult: {
+            type: DataTypes.BOOLEAN,
+            allowNull: true,
+            defaultValue: false
+        },
         icon_url: {
             type: DataTypes.STRING(255),
             allowNull: false

@@ -63,6 +63,10 @@ export default function (nga, admin) {
         .attributes({placeholder: 'Pin Protected'})
         .validation({required: true})
         .label('Pin Protected'),
+      nga.field('is_adult', 'boolean')
+        .attributes({placeholder: 'Is Adult'})
+        .validation({required: true})
+        .label('Is Adult'),
       nga.field('icon_url', 'file')
         .uploadInformation({'url': '/file-upload/single-file/genre/icon_url', 'apifilename': 'result'})
         .template(modalImageUpload)

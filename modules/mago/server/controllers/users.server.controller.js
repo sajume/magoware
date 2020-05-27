@@ -4,6 +4,7 @@
  * Module dependencies.
  */
 var path = require('path'),
+  joi = require('@hapi/joi'),
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
     winston = require('winston'),
   db = require(path.resolve('./config/lib/sequelize')).models,
@@ -12,11 +13,24 @@ var path = require('path'),
   DBModel = db.users,
   userFunctions = require(path.resolve('./custom_functions/user'));
 
+const passwordRegex =/(?=.*[A-Z]+.*)(?=.*[0-9]+.*)(?=.*[!@#$%^&*]+.*)(.*[a-z]+.*)/;
+
+const baseValidator = joi.object({
+  hashedpassword: joi.string()
+    .custom(validatePassword)
+}).unknown(true);
+
+exports.baseValidator = baseValidator;
+
 /**
  * Create
  */
 exports.create = function(req, res) {
-
+  let validationResult = baseValidator.validate(req.body);
+  if (validationResult.error) {
+    res.status(400).send({message: validationResult.error.details[0].message});
+    return;
+  }
   var user = DBModel.build(req.body);
 
   user.salt = user.makeSalt();
@@ -166,6 +180,12 @@ exports.read = function(req, res) {
  * Update
  */
 exports.update = function(req, res) {
+    let validationResult = baseValidator.validate(req.body);
+    if (validationResult.error) {
+      res.status(400).send({message: validationResult.error.details[0].message});
+      return;
+    }
+
     var updateData = req.users;
 
     var admin_id = 0;
@@ -282,8 +302,7 @@ exports.list = function(req, res) {
   final_where.where = qwhere;
   if(parseInt(query._start)) final_where.offset = parseInt(query._start);
   if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
-  final_where.include = [];
+  if(query._orderBy) final_where.order = [[query._orderBy, query._orderDir]];
 
     if(query.group_id) qwhere.group_id = query.group_id;
     if(query.company_id) qwhere.company_id = query.company_id;
@@ -412,3 +431,15 @@ exports.changepassword = function(req, res, next) {
     });
   }
 };
+
+function validatePassword(val, helper) {
+  if (val.length < 8) {
+    return helper.message('Password must have at minimum 8 characters');
+  }
+
+  if (!passwordRegex.test(val)) {
+    return helper.message('Password must contain uppercase and lowercase letters, at least one digit from [0-9] and one special char !@#$%^&*');
+  }
+
+  return true;
+}

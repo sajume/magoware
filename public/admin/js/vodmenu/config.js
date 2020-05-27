@@ -26,6 +26,8 @@ export default function (nga, admin) {
             .label('Icon'),
           nga.field('pin_protected', 'boolean')
             .label('Pin Protected'),
+          nga.field('is_adult', 'boolean')
+            .label('Is Adult'),
           nga.field('isavailable', 'boolean')
             .label('Available')
         ])
@@ -67,6 +69,10 @@ export default function (nga, admin) {
             .attributes({placeholder: 'Pin Protected'})
             .validation({required: true})
             .label('Pin Protected'),
+          nga.field('is_adult', 'boolean')
+            .attributes({placeholder: 'Is Adult'})
+            .validation({required: true})
+            .label('Is Adult'),
           nga.field('isavailable', 'boolean')
             .attributes({placeholder: 'Is Available'})
             .validation({required: true})

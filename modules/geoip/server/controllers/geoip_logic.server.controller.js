@@ -5,7 +5,8 @@ var path = require('path'),
     fs = require('fs-extra'),
     downloader = require('download-file'),
     tar = require('tar'),
-    winston = require(path.resolve('./config/lib/winston'));
+    winston = require(path.resolve('./config/lib/winston')),
+    request = require('request');
 
 exports.handleGetIPData = function(req, res) {
    let ip = req.query.ip;
@@ -23,8 +24,41 @@ exports.handleGetIPData = function(req, res) {
            response.timezone = geoInfo.location.timeZone;
            res.send({status: true, geo_data: response});
         }).catch(function(error) {
-            res.send({status: false, message: error})
+            res.send({status: false, message: 'Error getting geoip data'})
         });
+}
+
+exports.handleGetIPTimezone = function(req, res) {
+    let ip = req.query.ip;
+    if (!ip) {
+        req.query.ip = req.ip.replace('::ffff:', ''); //GET IPV4
+    }
+
+    Reader.open('./public/files/geoip/GeoLite2-City.mmdb')
+    .then(function(reader) {
+        let geoInfo = reader.city(ip);
+        if (!geoInfo.location || !geoInfo.location.timeZone) {
+            return resolveTimezoneFormExternalService(ip)
+                .then(function(response) {
+                    res.send({status: true, geo_data: {timezone: response.timezone}});
+                })
+                .catch(function(err) {
+                    res.send({status: false, message: err});
+                });
+        }
+
+        let response = {};
+        response.timezone = geoInfo.location.timeZone;
+        res.send({status: true, geo_data: response});
+     }).catch(function(error) {
+        return resolveTimezoneFormExternalService(ip)
+            .then(function(response) {
+                res.send({status: true, geo_data: {timezone: response.timezone}});
+            })
+            .catch(function(err) {
+                res.send({status: false, message: err});
+            });
+     });
 }
 
 exports.middleware = function (req, res, next) {
@@ -48,6 +82,20 @@ exports.middleware = function (req, res, next) {
      });
  
 };
+
+function resolveTimezoneFormExternalService(ip) {
+    return new Promise(function(resolve, reject) {
+        request.get('http://worldtimeapi.org/api/ip/' + ip, function(err, response, body) {
+            if (err) {
+                reject();
+            }
+            else {
+                let data = JSON.parse(body);
+                resolve(data);
+            }
+        })
+    });
+}
 
 exports.handleDownloadDatabase = function(req, res) {
     let url = req.body.url;
@@ -150,4 +198,30 @@ exports.handleDatabaseStatus = function(req, res) {
     else {
         res.send({status: false, message: "Geoip is not active because Database binary file not found"});
     }
+}
+
+function getDatabaseReader() {
+    return new Promise(function(resolve, reject) {
+        if (isServiceAvailable() == false) {
+            resolve(null);
+            return;
+        }
+
+        return Reader.open('./public/files/geoip/GeoLite2-City.mmdb')
+        .then(function(reader) {
+            resolve(reader);
+         }).catch(function(err) {
+             resolve(null);
+         });
+    });
+}
+
+exports.getDatabaseReader = getDatabaseReader;
+
+function isServiceAvailable() {
+    if (fs.existsSync('./public/files/geoip/GeoLite2-City.mmdb')) {
+        return true;
+    }
+
+    return false;
 }

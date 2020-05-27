@@ -119,8 +119,7 @@ exports.list = function(req, res) {
     if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
   }
 
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
-  final_where.include = [];
+  if(query._orderBy) final_where.order = [[query._orderBy, query._orderDir]];
 
   final_where.where.company_id = req.token.company_id; //return only records for this company
 

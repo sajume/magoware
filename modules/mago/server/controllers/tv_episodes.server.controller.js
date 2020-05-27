@@ -12,7 +12,8 @@ var path = require('path'),
     DBModel = db.tv_episode,
     refresh = require(path.resolve('./modules/mago/server/controllers/common.controller.js')),
     request = require("request"),
-    fs = require('fs');
+    fs = require('fs'),
+    escape = require(path.resolve('./custom_functions/escape'));
 
 /**
  * Create
@@ -174,7 +175,7 @@ exports.list = function(req, res) {
         if(parseInt(query._start)) final_where.offset = parseInt(query._start);
         if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
     }
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
     else final_where.order = [['createdAt', 'DESC']];
 
     final_where.where.company_id = req.token.company_id; //return only records for this company

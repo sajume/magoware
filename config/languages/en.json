@@ -66,6 +66,7 @@
         "THUMBDOWN": "Thumb-down",
         "COMING_SOON": "Coming soon",
         "FAVORITE_CHANNEL_ALREADY_EXISTS_AS_FAVORITE": "This channel already exists as favorite",
-        "NO_COMPANIES_AVAILABLE": "There are no companies with this username"
+        "NO_COMPANIES_AVAILABLE": "There are no companies with this username",
+        "USER_PARAMETER_MISSING": "User parameter in query missing"
     }
 }

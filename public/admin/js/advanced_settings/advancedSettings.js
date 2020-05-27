@@ -30,9 +30,8 @@ function advancedsettings($stateProvider) {
             paypal: response.data.data.paypal,
             wowza: response.data.data.wowza,
             woocomerce: response.data.data.woocomerce,
+            default_player: response.data.data.default_player
           };
-
-          console.log($scope.advanced_settings)
 
         }
       }, function errorCallback(response) {

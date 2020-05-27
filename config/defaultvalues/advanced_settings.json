@@ -67,5 +67,9 @@
         "description": "Configuration for device upgrade process",
         "availability_interval": [[3, 0], [6, 0]],
         "availability_denominator": 1
+    },
+    "default_player": {
+        "description": "Default Player for android when new customer is created.",
+        "value": "default"
     }
 }

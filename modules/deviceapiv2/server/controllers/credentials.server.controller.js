@@ -1,12 +1,17 @@
 'use strict';
 var path = require('path'),
   db = require(path.resolve('./config/lib/sequelize')),
+  redisClient = require(path.resolve('./config/lib/redis')),
+  securityConfig = require(path.resolve('./config/security/exprees.security.config')),
   response = require(path.resolve("./config/responses.js")),
   password_encryption = require(path.resolve('./modules/deviceapiv2/server/controllers/authentication.server.controller.js')),
   push_msg = require(path.resolve('./custom_functions/push_messages')),
   models = db.models;
 var async = require("async");
 var winston = require('winston');
+const {RateLimiterRedis} = require('rate-limiter-flexible');
+
+
 
 
 //todo: remove , replaced by loginv2
@@ -335,6 +340,7 @@ exports.lock_account = function lock_account(login_id, username) {
 
 };
 
+
 /**
  * @api {get} /apiv2/credentials/company_list GetCompanyList
  * @apiName GetCompanyList
@@ -348,15 +354,41 @@ exports.lock_account = function lock_account(login_id, username) {
  *auth=%7Bapi_version%3D22%2C+appversion%3D1.1.4.2%2C+screensize%3D480x800%2C+appid%3D2%2C+devicebrand%3D+SM-G361F+Build%2FLMY48B%2C+language%3Deng%2C+ntype%3D1%2C+app_name%3DMAGOWARE%2C+device_timezone%3D2%2C+os%3DLinux%3B+U%3B+Android+5.1.1%2C+auth%3D8yDhVenHT3Mp0O2QCLJFhCUfT73WR1mE2QRc1ZE7J22cRfmskdTmhCk9ssGWhoIBpIzoTEOLIqwl%0A47NaUwLoLZjH1i2WRYaiioIRMqhRvH2FsSuf1YG%2FFoT9fEw4CrxF%0A%2C+hdmi%3Dfalse%2C+firmwareversion%3DLMY48B.G361FXXU1APB1%7D
  *
  */
-exports.company_list = function (req, res, next) {
+exports.company_list = async function (req, res, next) {
+  const limiterConsecutiveFailsByUsername = new RateLimiterRedis({
+    redis: redisClient.client,
+    keyPrefix: 'login_fail_consecutive_username',
+    points: securityConfig.rate_limit.login_max_req,
+    duration: securityConfig.rate_limit.login_interval_req_in_minutes * 60, // per x seconds by ip,
+    blockDuration: 60 * securityConfig.rate_limit.login_block_duration, // Block for 1 day, if 100 wrong attempts per day
+  });
+
+  const username = req.auth_obj.username;
+  const rlResUsername = await limiterConsecutiveFailsByUsername.get(username);
+  const maxConsecutiveFailsByUsername = securityConfig.rate_limit.login_max_req;
+
+
+  if(rlResUsername !== null && rlResUsername.consumedPoints > maxConsecutiveFailsByUsername) {
+    const secs = Math.round(rlResUsername.msBeforeNext / 1000) || 1;
+    res.set('Retry-After', String(secs));
+    res.status(429).send({
+      status_code: 429,
+      error_code: 1,
+      timestamp: 1,
+      error_description: "Too many requests, please try again later",
+      extra_data: "Too many requests, please try again later",
+      response_object: []
+    });
+  } else {
 
   models.login_data.findAll({
     attributes: ['id', 'username', 'password', 'salt', 'company_id'],
-    where: {username: req.auth_obj.username},
+    where: {username: username},
     include: [{model: models.settings, attributes: ['id', 'company_name', 'new_encryption_key'], required: true}]
-  }).then(function (companies) {
+  }).then(async function (companies) {
 
     if (!companies) {
+      await limiterConsecutiveFailsByUsername.consume(username);
       response.send_res_get(req, res, [], 704, -1, 'WRONG_PASSWORD_DESCRIPTION', 'WRONG_PASSWORD_DATA', 'no-store');
     } else {
       var company_list = [];
@@ -368,24 +400,41 @@ exports.company_list = function (req, res, next) {
 
       //if no password match
       if (company_list.length == 0) {
+        await limiterConsecutiveFailsByUsername.consume(username);
         response.send_res_get(req, res, [], 704, -1, 'WRONG_PASSWORD_DESCRIPTION', 'WRONG_PASSWORD_DATA', 'no-store');
       }
       //if one password match
       else if (company_list.length == 1 && companies[0].setting.id === 1) {
+        await limiterConsecutiveFailsByUsername.delete(username);
         req.auth_obj.company_id = companies[0].setting.id;
         req.body.company_id = companies[0].setting.id;
         req.body.isFromCompanyList = true;
         req.url = '/apiv2/credentials/login';
         return req.app._router.handle(req, res, next);
       } else {
+        await limiterConsecutiveFailsByUsername.delete(username);
         response.send_res_get(req, res, company_list, 300, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
       }
     }
 
   }).catch(function (error) {
-    winston.error("Finding the list of companies for this user failed with error: ", error);
-    response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-  });
+    if (error instanceof Error) {
+      winston.error("Finding the list of companies for this user failed with error: ", error);
+      response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+      throw error;
+    } else {
+      const secs = Math.round(error.msBeforeNext / 1000) || 1;
+      res.set('Retry-After', String(secs));
+      res.status(429).send({
+        status_code: 429,
+        error_code: 1,
+        timestamp: 1,
+        error_description: "Too many requests, please try again later",
+        extra_data: "Too many requests, please try again later",
+        response_object: []
+      });
+  }});
+  }
 };
 
 
@@ -403,20 +452,21 @@ exports.company_list = function (req, res, next) {
  * @apiDescription If token is not present, plain text values are used to login
  */
 exports.loginv2 = function (req, res) {
+
   models.app_group.findOne({
     attributes: ['app_group_id'],
     where: {app_id: req.auth_obj.appid}
   }).then(function (app_group) {
     models.devices.findAll({
       include: [{
-        model: models.app_group, 
-        required: true, 
-        attributes:[], 
+        model: models.app_group,
+        required: true,
+        attributes:[],
         where: {app_group_id: app_group.app_group_id}
       }],
       where: {username: req.auth_obj.username, device_active: true, device_id: {not: req.auth_obj.boxid}}
     }).then(function (device) {
-      
+
       if (!device || device.length < Number(req.thisuser.max_login_limit)) {
         upsertDevice({
           device_active: true,

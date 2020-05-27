@@ -63,7 +63,12 @@ export default function (nga, admin) {
                     { value: 6, label: 'Apple TV' },
                     {value: 7, label: 'Web Smart TV'}
                 ])
-                .validation({required: true})
+                .validation({validator: function(value) {
+                        if(value === null || value === ''){
+                            throw new Error('Please Select Applications IDs ');
+                        }
+                    }
+                })
                 .label('Applications IDs'),
             nga.field('command', 'choice')
                 .choices([

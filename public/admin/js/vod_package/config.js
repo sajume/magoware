@@ -44,7 +44,12 @@ export default function (nga, admin) {
                 .targetField(nga.field('description'))
                 .permanentFilters({ package_type_id: [3,4] })
                 .attributes({ placeholder: 'Select Package Type' })
-                .validation({ required: true })
+                .validation({validator: function(value) {
+                        if(value === null || value === ''){
+                            throw new Error('Please Select Package Type');
+                        }
+                    }
+                })
                 .label('Package Type'),
             nga.field('template')
                 .label('')

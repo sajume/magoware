@@ -17,8 +17,20 @@ module.exports = function (app) {
     app.route('/api/webhooks')
         .all(policy.Authenticate)
         .all(policy.isAllowed)
+        .get(webhooks.list)
         .post(webhooks.create);
 
     app.route('/api/webhooks/event_types')
         .get(webhooks.getEventTypes);
+
+
+
+    app.route('/api/webhooks/:webhooksId')
+        .all(policy.Authenticate)
+        .all(policy.isAllowed)
+        .get(webhooks.read)
+        .delete(webhooks.delete)
+        .put(webhooks.update);
+
+    app.param('webhooksId', webhooks.dataByID);
 };

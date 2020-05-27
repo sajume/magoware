@@ -166,6 +166,11 @@ export default function(nga, admin) {
         })
         .validation({ required: true })
         .label('Description'),
+        nga
+            .field('catchup_mode', 'boolean')
+            .attributes({ placeholder: 'Catchup Mode' })
+            .validation({ required: true })
+            .label('Catchup Mode'),
       nga
         .field('isavailable', 'boolean')
         .attributes({ placeholder: 'Is Available' })
@@ -281,6 +286,13 @@ export default function(nga, admin) {
         })
         .validation({ required: true })
         .label('Description'),
+
+        nga
+            .field('catchup_mode', 'boolean')
+            .attributes({ placeholder: 'Catchup Mode' })
+            .validation({ required: true })
+            .label('Catchup Mode'),
+
       nga
         .field('isavailable', 'boolean')
         .attributes({ placeholder: 'Is Available' })

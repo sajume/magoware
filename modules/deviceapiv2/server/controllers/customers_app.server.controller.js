@@ -92,6 +92,43 @@ exports.user_data_get = function(req, res) {
     });
 };
 
+
+
+
+//verify if user exists
+exports.user_exists  = function(req, res) {
+    let username = req.query.username;
+    if (username) {
+        models.login_data.find({
+            attributes: ['id', 'username', 'createdAt','mac_address','pin', 'show_adult','player','timezone','beta_user','account_lock', 'channel_stream_source_id', 'vod_stream_source'],
+            where: {username: username, company_id:1},
+            include: [{
+                model: models.customer_data,
+                attributes:['firstname','lastname','email','telephone','address','city','country'],
+                required: true
+            }],
+            raw: true
+        }).then(function(customer) {
+            if (customer) {
+                response.send_res(req, res, [customer], 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
+            } else {
+                response.send_res(req, res, [], 702, -1, 'USER_NOT_FOUND_DESCRIPTION', 'USER_NOT_FOUND_DATA', 'no-store');
+            }
+        }).catch(function(err) {
+            winston.error('Getting user failed with error: ', err);
+            response.send_res_get(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+        });
+    }
+    else {
+        response.send_res_get(req, res, [], 708, -1, 'USER_PARAMETER_MISSING', 'USER_NOT_FOUND_DESCRIPTION', 'no-store');
+    }
+}
+
+
+
+
+
+
 //API UPDATES DATA FOR THIS USER, RETURNS STATUS
 exports.update_user_data = function(req, res) {
     models.customer_data.findOne({
@@ -195,6 +232,30 @@ exports.update_user_settings = function(req, res) {
         response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
     });
 
+};
+
+/**
+ * @api {post} /apiv2/customer_app/change/pin Change password
+ * @apiName ChangePassword
+ * @apiGroup DeviceAPI
+ *
+ * @apiParam {String} [auth]  Account protection token
+ * * @apiParam {String} [pin]  New pin
+ *
+ *
+ */
+exports.change_pin = function(req, res) {
+    models.login_data.update(
+      {
+          pin: req.body.pin,
+      },
+      {where: {username: req.auth_obj.username}}
+    ).then(function (result) {
+        response.send_res(req, res, [], 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'no-store');
+    }).catch(function(error) {
+        winston.error("Updating the client's pin failed with error: ", error);
+        response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+    });
 };
 
 /**

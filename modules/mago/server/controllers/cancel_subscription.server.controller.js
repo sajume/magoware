@@ -28,7 +28,7 @@ exports.update = function(req, res) {
                         .then(function (user) {
                             if (user) {
                                 req.body.username = user.username;
-                                subscription_functions.add_subscription_transaction(req, res, -1, req.body.transaction_id).then(function (result) {
+                                subscription_functions.add_subscription_transaction(req, res, -2, req.body.transaction_id).then(function (result) {
                                     if (result.status) {
                                         var updateData = req.salesReport;
                                         req.body.cancelation_date = Date.now();

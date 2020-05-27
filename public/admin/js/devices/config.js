@@ -14,7 +14,7 @@ export default function (nga, admin) {
 			nga.field('id')
 				.label('ID'),
 			nga.field('username')
-				.label('Username'),	
+				.label('Username'),
 			nga.field('device_ip', 'string')
 				.map(function truncate(value) {
                  	if (!value) {
@@ -30,17 +30,6 @@ export default function (nga, admin) {
 				.label('Ethernet'),
 			nga.field('device_wifimac_address', 'string')
 				.label('WiFi'),
-			nga.field('ntype')
-				.map(function app(value) {
-						if (value == 1) {
-								return 'Wifi';
-						} else if (value == 2) {
-								return 'Ethernet';
-						} else if (value == 3) {
-								return '(GPRS)';
-						}
-				})
-				.label('Ntype'),
 			nga.field('appid')
 				.map(function app(value) {
 					if (value === 1) {
@@ -62,8 +51,6 @@ export default function (nga, admin) {
 				.label('App'),
 			nga.field('app_version')
 				.label('App Version'),
-			nga.field('screen_resolution')
-				.label('Screen Resolution'),
 			nga.field('hdmi')
 				.label('HDMI'),
 			nga.field('device_brand')
@@ -125,14 +112,14 @@ export default function (nga, admin) {
         ])
         .sortField('appid')
         .sortDir('ASC')
-		.listActions(['edit'])
+		.listActions(['<a class="btn btn-default btn-xs" href="/admin/#/Devices/edit/{{entry.values.id}}"><span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>&nbsp;More</a>',' <remote-login device_id="{{entry.values.id}}" company_id="{{entry.values.company_id}}"></remote-login>'])
 		.exportFields([
          devices.listView().fields(),
         ]);
 
 
 	devices.creationView()
-		.title('<h4>Devices <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Device</h4>')         
+		.title('<h4>Devices <i class="fa fa-angle-right" aria-hidden="true"></i> Create: Device</h4>')
 		.fields([
 			nga.field('username')
 				.attributes({ placeholder: 'Username' })
@@ -225,5 +212,5 @@ export default function (nga, admin) {
 
 
 	return devices;
-	
+
 }

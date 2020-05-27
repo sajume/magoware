@@ -34,9 +34,6 @@ module.exports = function(app) {
         .post(cancelSalesreport.update);
 
 
-    app.route('/api')
-
-
     app.route('/api/annul')
         .all(policy.Authenticate)
         .all(policy.isAllowed)

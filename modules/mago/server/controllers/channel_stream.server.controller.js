@@ -9,7 +9,8 @@ var path = require('path'),
     winston = require('winston'),
     refresh = require(path.resolve('./modules/mago/server/controllers/common.controller.js')),
     DBModel = db.channel_stream,
-    streamStore = require(path.resolve('./config/lib/stream_store'));
+    streamStore = require(path.resolve('./config/lib/stream_store')),
+    escape = require(path.resolve('./custom_functions/escape'));
 
 /**
  * Create
@@ -130,7 +131,7 @@ exports.list = function(req, res) {
   final_where.where = qwhere;
   if(parseInt(query._start)) final_where.offset = parseInt(query._start);
   if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
   final_where.include = [db.channels, db.channel_stream_source];
 
   if(query.channel_id) qwhere.channel_id = query.channel_id;

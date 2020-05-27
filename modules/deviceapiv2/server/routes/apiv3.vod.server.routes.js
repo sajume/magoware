@@ -35,10 +35,6 @@ module.exports = function(app) {
         .all(authpolicy.isAllowed)
         .put(vodController.favorite);
 
-  /*  app.route('/apiv3/vod/percentage_position/:vod_id/:percentage_position')
-        .all(authpolicy.isAllowed)
-        .put(vodController.percentage_position);*/
-
     app.route('/apiv3/vod/vod_related/:vod_id')
         .all(authpolicy.isAllowed)
         .get(vodController.get_related_movies);

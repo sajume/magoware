@@ -39,6 +39,9 @@ global.livetv_l_subscription_end = [];
 global.vod_s_subscription_end = [];
 global.vod_l_subscription_end = [];
 
+const dbColNameRegex = /^[a-zA-Z]+(_[a-zA-Z]+)*$/;
+const validOrderDir = ['ASC', 'DESC'];
+
 /**
  * Initialize local variables
  */
@@ -112,7 +115,7 @@ module.exports.initMiddleware = function (app) {
                         return;
                     }
                 }
-            
+
                 let ip = req.ip.substring(req.ip.lastIndexOf(':') + 1, req.ip.length);
                 if (securityConfig.rate_limit.ip_whitelist.indexOf(ip) !== -1) {
                     next();
@@ -154,7 +157,8 @@ module.exports.initMiddleware = function (app) {
             var msg = 'The CORS policy for this site does not ' +
                 'allow access from the specified Origin.';
             return callback(new Error(msg), false);
-        }
+        },
+        exposedHeaders: ['Content-Range', 'X-Total-Count']
     }));
     // Request body parsing middleware should be above methodOverride
     app.use('/file-upload', bodyParser.raw({
@@ -166,6 +170,10 @@ module.exports.initMiddleware = function (app) {
     app.use('/', bodyParser.json({
         limit: securityConfig.max_body_size
     }));
+
+    //Pevent sql injection
+    app.use('/api', preventSqlInjection);
+    app.use('/apiv2', preventSqlInjection);
 
     // Add the cookie parser and flash middleware
     app.use(cookieParser());
@@ -181,6 +189,46 @@ module.exports.initMiddleware = function (app) {
         }
     })
 };
+
+function preventSqlInjection(req, res, next) {
+    let order = req.query._orderBy || req.query.order_by;
+    if (order) {
+        if(!dbColNameRegex.test(order)) {
+            let response = {
+                status_code: 400,
+                error_code: -1,
+                timestamp: 1,
+                error_description: 'BAD_REQUEST',
+                extra_data: 'Invalid col name for order',
+                response_object: [],
+                message: 'Invalid col name for order'
+            };
+
+            res.status(400).send(response);
+            return;
+        }
+
+        //Validate dir
+        if (req.query.order_dir) {
+            let dir = req.query.order_dir.toUpperCase();
+            if (validOrderDir.indexOf(dir) == -1) {
+                dir = 'ASC'
+            }
+
+            req.query.order_dir = dir;
+        }
+        else if (req.query._orderDir) {
+            let dir = req.query._orderDir.toUpperCase();
+            if (validOrderDir.indexOf(dir) == -1) {
+                dir = 'ASC'
+            }
+
+            req.query._orderDir = dir;
+        }
+    }
+
+    next();
+}
 
 /**
  * Configure view engine

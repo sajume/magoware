@@ -18,7 +18,12 @@ const config = {
         ],
         route_whitelist: [
             '/apiv2/events/event'
-        ]
+        ],
+        login_max_req: 5, //it can make 5 requests in 60min for example
+        login_interval_req_in_minutes: 30, //these are the min that the user can make max login req
+        login_block_duration: 30, //30min,
+        forgot_password_max_req: 5,
+        forgot_password_duration: 60
     }
 }
 

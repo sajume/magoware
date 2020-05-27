@@ -13,7 +13,8 @@ var path = require('path'),
     DBModel = db.channels,
     ChannelPackages = db.packages_channels,
     sequelize_t = require(path.resolve('./config/lib/sequelize')),
-    fs = require('fs');
+    fs = require('fs'),
+    escape = require(path.resolve('./custom_functions/escape'));
 
 
 
@@ -264,7 +265,8 @@ exports.list = function(req, res) {
         if(parseInt(query._start)) final_where.offset = parseInt(query._start);
         if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
     }
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
   else final_where.order = [['channel_number', 'ASC']];
 
   if (query.genre_id) qwhere.genre_id = query.genre_id;

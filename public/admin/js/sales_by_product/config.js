@@ -14,8 +14,8 @@ export default function (nga, admin) {
                 .label('Last sold on'),
             nga.field('combo.duration', 'string')
                 .label('Duration (days)'),
-            nga.field('combo.value', 'string')
-                .label('Product price')
+            nga.field('total', 'string')
+                .label('Total Value')
         ]).filters([
             nga.field('startsaledate', 'date')
                 .attributes({ placeholder: 'From date' })

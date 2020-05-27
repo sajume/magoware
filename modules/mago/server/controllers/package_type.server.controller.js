@@ -9,6 +9,9 @@ var path = require('path'),
   db = require(path.resolve('./config/lib/sequelize')).models,
   DBModel = db.package_type;
 
+const escape = require(path.resolve('./custom_functions/escape'));
+
+
 /**
  * Create
  */
@@ -103,7 +106,8 @@ exports.list = function(req, res) {
 
   if(parseInt(query._start)) final_where.offset = parseInt(query._start);
   if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
 
 
   DBModel.findAndCountAll(
@@ -115,7 +119,7 @@ exports.list = function(req, res) {
       });
     } else {
 
-      res.setHeader("X-Total-Count", results.count);      
+      res.setHeader("X-Total-Count", results.count);
       res.json(results.rows);
     }
   }).catch(function(err) {

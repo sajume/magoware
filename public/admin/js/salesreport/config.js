@@ -126,9 +126,12 @@ export default function (nga, admin) {
                 .cssClasses('hidden-xs')
                 .editable(false)
                 .label('Sale Date'),
-            nga.field('combo.name', 'string')
+            nga.field('combo_id', 'reference')
+                .targetEntity(admin.getEntity('Combos'))
+                .attributes({ placeholder: 'Product' })
                 .editable(false)
-                .label('Products'),
+                .targetField(nga.field('name'))
+                .label('Product'),
             nga.field('combo_id','reference')
                 .targetEntity(admin.getEntity('Combos'))
                 .targetField(nga.field('value'))

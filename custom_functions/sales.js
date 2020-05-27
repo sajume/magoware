@@ -120,7 +120,9 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
 
                 return sequelize_t.sequelize.transaction(function (t) {
                         const startDate = new Date(start_date);
+
                         combo.combo_packages.forEach(function (item, i, arr) {
+                            let salesreportdata = {};
                             const runningSub = hasPackage(item.package_id, loginData.subscriptions);
 
                             const sub = {
@@ -155,7 +157,7 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                                         runningSub.end_date = addDays(startDate, combo.duration * sale_or_refund);
                                     }
                                 }
-                                
+
                                 transactions_array.push(    //add update to transaction array
                                     db.subscription.update(runningSub.dataValues, {
                                         where: {id: runningSub.id},
@@ -165,7 +167,8 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                             }
                         });//end package loop
 
-                        const salesreportdata = {
+
+                         salesreportdata = {
                             transaction_id: transaction_id,
                             user_id : req.token.id,
                             on_behalf_id: req.body.on_behalf_id,
@@ -207,17 +210,30 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
                 }).then(function (result) {
   /*                  var response = {};
                     response = { transaction_id:result[result.length-1].dataValues.transaction_id }*/
-
-                    var response = {}
-                    response = {transaction_id: transaction_id}
+                   // response = {transaction_id: transaction_id}
                     let eventType;
+                    var customer_result = result[result.length-1]
+
+
+                    var customer_data = loginData.dataValues;
+                    delete customer_data.subscriptions;
+
+                    let all_data = {...customer_data, ...customer_data.customer_datum.dataValues}
+
+                    delete all_data.customer_datum;
+
+
+                    let subsr_created_data = {...combo.dataValues, ...customer_result.dataValues, ...all_data}
+                    let subscr_canceled_date = {...salesreportdata, ...all_data, ...combo.dataValues}
 
                     if(sale_or_refund == 1)
-                    { eventType = eventSystem.EventType.Subscription_Created}
+                    { eventType = eventSystem.EventType.subscription_created;
+                        eventSystem.emit(req.token.company_id, eventType, subsr_created_data)
+                    }
                      else
-                    { eventType = eventSystem.EventType.Subscription_Canceled};
-
-                    eventSystem.emit(req.token.company_id, eventType, response)
+                    { eventType = eventSystem.EventType.subscription_canceled;
+                        eventSystem.emit(req.token.company_id, eventType, subscr_canceled_date)
+                    };
 
                     return {
                         status: true,
@@ -239,10 +255,9 @@ exports.add_subscription_transaction = function(req,res,sale_or_refund,transacti
     }
 
     function addDays(startdate, duration) {
-        const start_date_ts = moment(startdate, "YYYY-MM-DD hh:mm:ss").valueOf() / 1000; //convert start date to timestamp in seconds
-        const end_date_ts = start_date_ts + duration * 86400; //add duration in number of seconds
-         // convert enddate from timestamp to datetime
-        return moment.unix(end_date_ts).format("YYYY-MM-DD hh:mm:ss");
+        let date = new Date(startdate);
+        date.setDate(date.getDate() + duration);
+        return date;
     }
 };
 

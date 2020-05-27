@@ -1,1 +1,11 @@
-{"SITE_ID":"KMDK","AES256_IV":"0123456789abcdef","API_TYPE":"JSON","SITE_KEY":"WxoXbCibLa6ZAuwIxlfG8ZaX3JzX68uZ","PACK_KEY":"Ma6VRgtv0C40NAQfNShhRRLFljiHunAJ","TEST_USERID":"morningstar1","TEST_CID":"kombi2.stream_360p","TEST_STREAM":"http://109.69.2.124:8337/testpallycon/kombi2.stream_360p/playlist.m3u8","LIC_SERVER":"https://license.pallycon.com/ri/licenseManager.do"}
+{
+  "SITE_ID": "KMDK",
+  "AES256_IV": "0123456789abcdef",
+  "API_TYPE": "JSON",
+  "SITE_KEY": "",
+  "PACK_KEY": "",
+  "TEST_USERID": "",
+  "TEST_CID": "",
+  "TEST_STREAM": "",
+  "LIC_SERVER": "https://license.pallycon.com/ri/licenseManager.do"
+}

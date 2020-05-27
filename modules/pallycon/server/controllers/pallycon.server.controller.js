@@ -43,7 +43,7 @@ exports.TokenIssue = function (req, res) {
 
   let licenseInfo = {
     drmType: "NCG",
-    contentId: "platinium",
+    contentId: "",
     userId: req.thisuser.username,
   };
 

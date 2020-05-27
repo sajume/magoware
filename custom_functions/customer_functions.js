@@ -188,6 +188,8 @@ exports.find_or_create_customer_and_login = function(req, res) {
 
                     return db_t.sequelize.transaction(function (t) {
                         req.body.group_id = (req.body.group_id) ? req.body.group_id : 1;
+                        req.body.username = req.body.username.toLowerCase();
+
                         //req.body.company_id = login_data.company_id;
                         return db.customer_data.create(
                             req.body, {transaction: t}

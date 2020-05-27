@@ -5,11 +5,7 @@ var path = require('path'),
 
 module.exports = function(app) {
     app.route('/apiv2/geoip/mytimezone')
-        .get(function (req, res, next) {
-            req.query.ip = req.ip.replace('::ffff:', ''); //GET IPV4
-            next();
-        })
-        .get(geoipLogic.handleGetIPData);
+        .get(geoipLogic.handleGetIPTimezone);
     app.route('/apiv2/geoip/')
         .get(geoipLogic.handleGetIPData);
     app.route('/apiv2/geoip/update')

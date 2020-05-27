@@ -73,124 +73,69 @@ exports.list = function(req, res) {
 
     // requisites for streams served by the company
     var stream_qwhere = {};
-    if(req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
-    if(req.auth_obj.appid === 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
     stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
     stream_qwhere.stream_mode = 'live'; //filter streams based on device resolution
     stream_qwhere.stream_resolution = {$like: "%"+req.auth_obj.appid+"%"};
 
-    // requisites for catchup streams
-    var catchupstream_where = {stream_source_id: req.thisuser.channel_stream_source_id, company_id: req.thisuser.company_id};
-    if(req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) catchupstream_where.stream_format = {$not: 0}; //don't send mpd streams for default player
-    if(req.auth_obj.appid === 3) catchupstream_where.stream_format = 2; // send only hls streams for ios application
-    catchupstream_where.stream_mode = 'catchup'; //filter streams based on device resolution
-    catchupstream_where.stream_resolution = {$like: "%"+req.auth_obj.appid+"%"};
-
-//find user channels and subscription channels for the user
-    models.my_channels.findAll({
-        attributes: ['id', 'channel_number', 'genre_id', 'title', 'description', 'stream_url'],
-        where: userstream_qwhere,
-        include: [{ model: models.genre, required: true, attributes: ['icon_url'], where: {is_available: true} }],
-        order: [[ 'channel_number', 'ASC' ]],
-        raw: true
-    }).then(function (my_channel_list) {
-        models.channel_stream.findAll({
-            attributes: ['channel_id'],
-            where: catchupstream_where
-        }).then(function (catchup_streams) {
-            models.channels.findAll({
-                raw:true,
-                attributes: ['id','genre_id', 'channel_number', 'title', 'icon_url','pin_protected'],
-                group: ['id'],
-                where: qwhere,
-                include: [
-                    {model: models.channel_stream,
+    //find user channels and subscription channels for the user
+    models.channels.findAll({
+        raw:true,
+        attributes: ['id','genre_id', 'channel_number', 'title', 'icon_url','pin_protected', 'catchup_mode'],
+        group: ['id'],
+        where: qwhere,
+        include: [
+            {model: models.channel_stream,
+                required: true,
+                attributes: ['stream_source_id','stream_url','stream_format', 'drm_platform', 'token','token_url','is_octoshape','encryption','encryption_url'],
+                where: stream_qwhere
+            },
+            { model: models.genre, required: true, attributes: [], where: {is_available: true} },
+            {model: models.packages_channels,
+                required: true,
+                attributes:[],
+                include:[
+                    {model: models.package,
                         required: true,
-                        attributes: ['stream_source_id','stream_url','stream_format', 'drm_platform', 'token','token_url','is_octoshape','encryption','encryption_url'],
-                        where: stream_qwhere
-                    },
-                    { model: models.genre, required: true, attributes: [], where: {is_available: true} },
-                    {model: models.packages_channels,
-                        required: true,
-                        attributes:[],
+                        attributes: [],
+                        where: {package_type_id: req.auth_obj.screensize},
                         include:[
-                            {model: models.package,
+                            {model: models.subscription,
                                 required: true,
                                 attributes: [],
-                                where: {package_type_id: req.auth_obj.screensize},
-                                include:[
-                                    {model: models.subscription,
-                                        required: true,
-                                        attributes: [],
-                                        where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
-                                    }
-                                ]}
-                        ]},
-                    {model: models.favorite_channels,
-                        required: false, //left join
-                        attributes: ['id'],
-                        where: {user_id: req.thisuser.id}
-                    }
-                ],
-                order: [[ 'channel_number', 'ASC' ]]
-            }).then(function (result) {
-                /*var user_channel_list = [];
+                                where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
+                            }
+                        ]}
+                ]},
+            {model: models.favorite_channels,
+                required: false, //left join
+                attributes: ['id'],
+                where: {user_id: req.thisuser.id}
+            }
+        ],
+        order: [[ 'channel_number', 'ASC' ]]
+    }).then(function (result) {
+        for (var i = 0; i < result.length; i++) {
+            result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i]["icon_url"];
+            result[i].pin_protected = result[i].pin_protected == 0 ? 'false':'true';
+            result[i].stream_source_id = result[i]["channel_streams.stream_source_id"]; delete result[i]["channel_streams.stream_source_id"];
+            result[i].stream_url = result[i]["channel_streams.stream_url"]; delete result[i]["channel_streams.stream_url"];
+            result[i].channel_mode = set_stream_mode(result[i]);
+            result[i].stream_format = result[i]["channel_streams.stream_format"]; delete result[i]["channel_streams.stream_format"];
+            result[i].drm_platform = result[i]["channel_streams.drm_platform"]; delete result[i]["channel_streams.drm_platform"];
+            result[i].token = result[i]["channel_streams.token"]; delete result[i]["channel_streams.token"];
+            result[i].token_url = result[i]["channel_streams.token_url"]; delete result[i]["channel_streams.token_url"];
+            result[i].encryption = result[i]["channel_streams.encryption"]; delete result[i]["channel_streams.encryption"];
+            result[i].encryption_url = result[i]["channel_streams.encryption_url"]; delete result[i]["channel_streams.encryption_url"];
+            result[i].is_octoshape = result[i]["channel_streams.is_octoshape"]; delete result[i]["channel_streams.is_octoshape"];
+            result[i].favorite_channel = result[i]["favorite_channels.id"] ? "1":"0"; delete result[i]["favorite_channels.id"];
+        }
 
-                for (var i = 0; i < my_channel_list.length; i++) {
-                    var temp_obj = {};
-                    temp_obj.id = my_channel_list[i].id;
-                    temp_obj.channel_number = my_channel_list[i].channel_number;
-                    temp_obj.title = my_channel_list[i].title;
-                    temp_obj.icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + my_channel_list[i]["genre.icon_url"];
-                    temp_obj.stream_url = my_channel_list[i]["stream_url"];
-                    temp_obj.genre_id = my_channel_list[i].genre_id;
-                    temp_obj.channel_mode = 'live';
-                    temp_obj.pin_protected = 'false';
-                    temp_obj.stream_source_id = 1;
-                    temp_obj.stream_format = "1";
-                    temp_obj.drm_platform = "none";
-                    temp_obj.token = 0;
-                    temp_obj.token_url = '';
-                    temp_obj.encryption = 0;
-                    temp_obj.encryption_url = "0";
-                    temp_obj.is_octoshape = 0;
-                    temp_obj.favorite_channel = "0";
-                    user_channel_list.push(temp_obj)
-                }*/
-
-                for (var i = 0; i < result.length; i++) {
-                    result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i]["icon_url"];
-                    result[i].pin_protected = result[i].pin_protected == 0 ? 'false':'true';
-                    result[i].stream_source_id = result[i]["channel_streams.stream_source_id"]; delete result[i]["channel_streams.stream_source_id"];
-                    result[i].stream_url = result[i]["channel_streams.stream_url"]; delete result[i]["channel_streams.stream_url"];
-                    result[i].channel_mode = has_catchup(catchup_streams, result[i]["id"]);
-                    result[i].stream_format = result[i]["channel_streams.stream_format"]; delete result[i]["channel_streams.stream_format"];
-                    result[i].drm_platform = result[i]["channel_streams.drm_platform"]; delete result[i]["channel_streams.drm_platform"];
-                    result[i].token = result[i]["channel_streams.token"]; delete result[i]["channel_streams.token"];
-                    result[i].token_url = result[i]["channel_streams.token_url"]; delete result[i]["channel_streams.token_url"];
-                    result[i].encryption = result[i]["channel_streams.encryption"]; delete result[i]["channel_streams.encryption"];
-                    result[i].encryption_url = result[i]["channel_streams.encryption_url"]; delete result[i]["channel_streams.encryption_url"];
-                    result[i].is_octoshape = result[i]["channel_streams.is_octoshape"]; delete result[i]["channel_streams.is_octoshape"];
-                    result[i].favorite_channel = result[i]["favorite_channels.id"] ? "1":"0"; delete result[i]["favorite_channels.id"];
-                }
-
-                //var response_data = result.concat(user_channel_list);
-                response.send_res(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
-            }).catch(function(error) {
-                winston.error("Searching for the users list of channels failed with error: ", error);
-                response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-            });
-            return null;
-        }).catch(function(error) {
-            winston.error("Searching for the user's chatchup streams failed with error: ", error);
-            response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-        });
-        return null;
+        //var response_data = result.concat(user_channel_list);
+        response.send_res(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
     }).catch(function(error) {
-        winston.error("Searching for the user personal channels failed with error: ", error);
+        winston.error("Searching for the users list of channels failed with error: ", error);
         response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
     });
-
 };
 
 
@@ -221,125 +166,70 @@ exports.list_get = function(req, res) {
 
     // requisites for streams served by the company
     var stream_qwhere = {};
-    if(req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
-    if(req.auth_obj.appid === 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
     stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
     stream_qwhere.stream_mode = 'live'; //filter streams based on device resolution
     stream_qwhere.stream_resolution = {$like: "%"+req.auth_obj.appid+"%"};
 
-    // requisites for catchup streams
-    var catchupstream_where = {stream_source_id: req.thisuser.channel_stream_source_id, company_id: req.thisuser.company_id};
-    if(req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) catchupstream_where.stream_format = {$not: 0}; //don't send mpd streams for default player
-    if(req.auth_obj.appid === 3) catchupstream_where.stream_format = 2; // send only hls streams for ios application
-    catchupstream_where.stream_mode = 'catchup'; //filter streams based on device resolution
-    catchupstream_where.stream_resolution = {$like: "%"+req.auth_obj.appid+"%"};
-
     //find user channels and subscription channels for the user
-    models.my_channels.findAll({
-        attributes: ['id', 'channel_number', 'genre_id', 'title', 'description', 'stream_url'],
-        where: userstream_qwhere,
-        include: [{ model: models.genre, required: true, attributes: ['icon_url'], where: {is_available: true} }],
-        order: [[ 'channel_number', 'ASC' ]],
-        raw: true
-    }).then(function (my_channel_list) {
-        models.channel_stream.findAll({
-            attributes: ['channel_id'],
-            where: catchupstream_where
-        }).then(function (catchup_streams) {
-            models.channels.findAll({
-                raw:true,
-                attributes: ['id','genre_id', 'channel_number', 'title', 'icon_url','pin_protected'],
-                group: ['id'],
-                where: qwhere,
-                include: [
-                    {model: models.channel_stream,
+    models.channels.findAll({
+        raw:true,
+        attributes: ['id','genre_id', 'channel_number', 'title', 'icon_url','pin_protected', 'catchup_mode'],
+        group: ['id'],
+        where: qwhere,
+        include: [
+            {model: models.channel_stream,
+                required: true,
+                attributes: ['stream_source_id','stream_url','stream_format','token','token_url','is_octoshape','drm_platform','encryption','encryption_url'],
+                where: stream_qwhere
+            },
+            { model: models.genre, required: true, attributes: [], where: {is_available: true} },
+            {model: models.packages_channels,
+                required: true,
+                attributes:[],
+                include:[
+                    {model: models.package,
                         required: true,
-                        attributes: ['stream_source_id','stream_url','stream_format','token','token_url','is_octoshape','drm_platform','encryption','encryption_url'],
-                        where: stream_qwhere
-                    },
-                    { model: models.genre, required: true, attributes: [], where: {is_available: true} },
-                    {model: models.packages_channels,
-                        required: true,
-                        attributes:[],
+                        attributes: [],
+                        where: {package_type_id: req.auth_obj.screensize},
                         include:[
-                            {model: models.package,
+                            {model: models.subscription,
                                 required: true,
                                 attributes: [],
-                                where: {package_type_id: req.auth_obj.screensize},
-                                include:[
-                                    {model: models.subscription,
-                                        required: true,
-                                        attributes: [],
-                                        where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
-                                    }
-                                ]}
-                        ]},
-                    {model: models.favorite_channels,
-                        required: false, //left join
-                        attributes: ['id'],
-                        where: {user_id: req.thisuser.id}
-                    }
-                ],
-                order: [[ 'channel_number', 'ASC' ]]
-            }).then(function (result) {
-                /*var user_channel_list = [];
+                                where: {login_id: req.thisuser.id, end_date: {$gte: Date.now()}}
+                            }
+                        ]}
+                ]},
+            {model: models.favorite_channels,
+                required: false, //left join
+                attributes: ['id'],
+                where: {user_id: req.thisuser.id}
+            }
+        ],
+        order: [[ 'channel_number', 'ASC' ]]
+    }).then(function (result) {
+        for (var i = 0; i < result.length; i++) {
+            result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i]["icon_url"];
+            result[i].pin_protected = result[i].pin_protected == 0 ? 'false':'true';
+            result[i].stream_source_id = result[i]["channel_streams.stream_source_id"]; delete result[i]["channel_streams.stream_source_id"];
+            result[i].stream_url = result[i]["channel_streams.stream_url"]; delete result[i]["channel_streams.stream_url"];
+            result[i].channel_mode = set_stream_mode(result[i]);
+            result[i].stream_format = result[i]["channel_streams.stream_format"]; delete result[i]["channel_streams.stream_format"];
+            result[i].token = result[i]["channel_streams.token"]; delete result[i]["channel_streams.token"];
+            result[i].token_url = result[i]["channel_streams.token_url"]; delete result[i]["channel_streams.token_url"];
+            result[i].encryption = result[i]["channel_streams.encryption"]; delete result[i]["channel_streams.encryption"];
+            result[i].encryption_url = result[i]["channel_streams.encryption_url"]; delete result[i]["channel_streams.encryption_url"];
+            result[i].drm_platform = result[i]["channel_streams.drm_platform"]; delete result[i]["channel_streams.drm_platform"];
+            result[i].is_octoshape = result[i]["channel_streams.is_octoshape"]; delete result[i]["channel_streams.is_octoshape"];
+            result[i].favorite_channel = result[i]["favorite_channels.id"] ? "1":"0"; delete result[i]["favorite_channels.id"];
+        }
 
-                for (var i = 0; i < my_channel_list.length; i++) {
-                    var temp_obj = {};
-                    temp_obj.id = my_channel_list[i].id;
-                    temp_obj.channel_number = my_channel_list[i].channel_number;
-                    temp_obj.title = my_channel_list[i].title;
-                    temp_obj.icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + my_channel_list[i]["genre.icon_url"];
-                    temp_obj.stream_url = my_channel_list[i]["stream_url"];
-                    temp_obj.genre_id = my_channel_list[i].genre_id;
-                    temp_obj.channel_mode = 'live';
-                    temp_obj.pin_protected = 'false';
-                    temp_obj.stream_source_id = 1;
-                    temp_obj.stream_format = "1";
-                    temp_obj.token = 0;
-                    temp_obj.token_url = '';
-                    temp_obj.encryption = 0;
-                    temp_obj.encryption_url = "0";
-                    temp_obj.drm_platform = "none";
-                    temp_obj.is_octoshape = 0;
-                    temp_obj.favorite_channel = "0";
-                    user_channel_list.push(temp_obj)
-                }*/
+        //var response_data = result.concat(user_channel_list);
+        response.send_res_get(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
 
-                for (var i = 0; i < result.length; i++) {
-                    result[i].icon_url = req.app.locals.backendsettings[req.thisuser.company_id].assets_url + result[i]["icon_url"];
-                    result[i].pin_protected = result[i].pin_protected == 0 ? 'false':'true';
-                    result[i].stream_source_id = result[i]["channel_streams.stream_source_id"]; delete result[i]["channel_streams.stream_source_id"];
-                    result[i].stream_url = result[i]["channel_streams.stream_url"]; delete result[i]["channel_streams.stream_url"];
-                    result[i].channel_mode = has_catchup(catchup_streams, result[i]["id"]);
-                    result[i].stream_format = result[i]["channel_streams.stream_format"]; delete result[i]["channel_streams.stream_format"];
-                    result[i].token = result[i]["channel_streams.token"]; delete result[i]["channel_streams.token"];
-                    result[i].token_url = result[i]["channel_streams.token_url"]; delete result[i]["channel_streams.token_url"];
-                    result[i].encryption = result[i]["channel_streams.encryption"]; delete result[i]["channel_streams.encryption"];
-                    result[i].encryption_url = result[i]["channel_streams.encryption_url"]; delete result[i]["channel_streams.encryption_url"];
-                    result[i].drm_platform = result[i]["channel_streams.drm_platform"]; delete result[i]["channel_streams.drm_platform"];
-                    result[i].is_octoshape = result[i]["channel_streams.is_octoshape"]; delete result[i]["channel_streams.is_octoshape"];
-                    result[i].favorite_channel = result[i]["favorite_channels.id"] ? "1":"0"; delete result[i]["favorite_channels.id"];
-                }
-
-                //var response_data = result.concat(user_channel_list);
-                response.send_res_get(req, res, result, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=86400');
-
-            }).catch(function(error) {
-                winston.error("Searching for the users list of channels failed with error: ", error);
-                response.send_res_get(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-            });
-            return null;
-        }).catch(function(error) {
-            winston.error("Searching for the user's chatchup streams failed with error: ", error);
-            response.send_res_get(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
-        });
-        return null;
     }).catch(function(error) {
-        winston.error("Searching for the user personal channels failed with error: ", error);
+        winston.error("Searching for the users list of channels failed with error: ", error);
         response.send_res_get(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
     });
-
 };
 
 
@@ -417,8 +307,11 @@ exports.genre_get = function(req, res) {
 
     if(req.thisuser.show_adult === false) where.pin_protected = false;
 
+    const showAdult = req.query.show_adult == "false";
+    if(showAdult) where.is_adult = false;
+
     models.genre.findAll({
-        attributes: ['id', 'pin_protected', ['description', 'name'], [Sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, Sequelize.col('icon_url')), 'icon'] ],
+        attributes: ['id', 'pin_protected','is_adult', ['description', 'name'], [Sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, Sequelize.col('icon_url')), 'icon'] ],
         where: where
     }).then(function (result) {
         const favorite_genre = {
@@ -707,14 +600,11 @@ exports.schedule = function(req, res) {
     });
 };
 
-function has_catchup(catchup_streams, channel_id){
-    var theposition = catchup_streams.filter(function(item) {
-        return item.channel_id == channel_id;
-    });
-    if(theposition[0]){
+function set_stream_mode(channel){
+    if(channel.catchup_mode){
         return 'catchup';
     }
-    else return 'live';
+    return 'live';
 }
 
 function program_status(programstart, programend){

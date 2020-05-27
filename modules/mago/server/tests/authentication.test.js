@@ -29,7 +29,7 @@ describe('Portal Authentication', function () {
       .expect('Content-Type', /json/)
       .expect(200)
       .end(function (err, res) {
-        expect(res.body.message).to.equal("UserName or Password does not match");
+        expect(res.body.message).to.equal("Username or Password does not match");
         done();
       });
   });

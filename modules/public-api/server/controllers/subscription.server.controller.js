@@ -47,63 +47,40 @@ exports.addSubscription = function (req, res) {
             return;
         }
 
-        db.login_data.findOne({
-            attributes: ['id'],
-            where: { username: req.body.username } })
-            .then(function (customer) {
-                if (customer) {
-                    if (req.body.type == 'subscr') {
-                        db.combo.findOne({
-                            where: {product_id: req.body.product_id}
-                        }).then(function (result) {
-                            if (!result) {
-                                res.status(409).send({error: {code: 409, message: 'Product not found' }});
-                                return;
-                            }
-                            let startDate = undefined;
+        if (req.body.type == 'subscr') {
+            let startDate = undefined;
 
-                            if (req.body.start_date) {
-                                startDate = Date.parse(req.body.start_date);
-                                if (isNaN(startDate)) {
-                                    res.status(400).send({code: 400, message: 'Start date is invalid'});
-                                    return;
-                                }
-                            }
+            if (req.body.start_date) {
+                startDate = Date.parse(req.body.start_date);
+                if (isNaN(startDate)) {
+                    res.status(400).send({code: 400, message: 'Start date is invalid'});
+                    return;
+                }
+            }
 
-                            req.body.login_data_id = customer.dataValues.id;
-                            
-                            saleFunctions.add_subscription_transaction(req, res, 1, req.body.transaction_id, startDate).then(function (result) {
-                                if (result.status) {
-                                    res.send({ data: {message:result.message}});
-                                }
-                                else {
-                                    res.status(409).send({error: {code: 409, message: result.message}});
-                                }
-                            }).catch(function (err) {
-                                winston.error('Adding subscription failed with error: ', err);
-                                res.status(500).send({ error: { code: 500, message: 'Internal error' } });
-                            });
-                        })
-
-                    } else if (req.body.type == 'vod') {
-                        saleFunctions.buy_movie(req, res, req.body.username, req.body.product_id, req.body.transaction_id).then(function (resul) {
-                            if (resul.status) {
-                                res.send({data: {message: resul.message}});
-                            } else {
-                                res.status(409).send({error: {code: 409, message: resul.message}});
-                            }
-                        }).catch(function (err) {
-                            winston.error('Adding vod subscription failed with error: ', err)
-                            res.status(500).send({error: 500, message: 'Internal error'});
-                        });
-                    }
+            saleFunctions.add_subscription_transaction(req, res, 1, req.body.transaction_id, startDate).then(function (result) {
+                if (result.status) {
+                    res.send({data: {message: result.message}});
                 } else {
-                    res.status(404).send({error: {code: 404, message: 'User not found'}})
+                    res.status(409).send({error: {code: 409, message: result.message}});
                 }
             }).catch(function (err) {
-            winston.error('Subscription transaction failed with error: ', err);
-            res.status(500).send({error: {code: 500, message: 'Internal error'}})
-        });
+                winston.error('Adding subscription failed with error: ', err);
+                res.status(500).send({error: {code: 500, message: 'Internal error'}});
+            });
+
+        } else if (req.body.type == 'vod') {
+            saleFunctions.buy_movie(req, res, req.body.username, req.body.product_id, req.body.transaction_id).then(function (resul) {
+                if (resul.status) {
+                    res.send({data: {message: resul.message}});
+                } else {
+                    res.status(409).send({error: {code: 409, message: resul.message}});
+                }
+            }).catch(function (err) {
+                winston.error('Adding vod subscription failed with error: ', err)
+                res.status(500).send({error: 500, message: 'Internal error'});
+            });
+        }
     })
 }
 
@@ -428,7 +405,7 @@ exports.listPackages = function (req, res) {
                 model: db.login_data,
                 required: true,
                 attributes: ['username'],
-                include: [    {
+                include: [{
                     model: db.customer_data,
                     attributes: ['email'],
                     required: true

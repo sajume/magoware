@@ -514,7 +514,89 @@ exports.get_event =  function(req, res) {
     }
 };
 
+/**
+ * @api {GET} /apiv2/channels/osd Get current and next epg
+ * @apiName osd
+ * @apiGroup DeviceAPI
+ * @apiParam (Query param) {Number} channelNumber Channel number
+ *
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+ *           "status_code": 200,
+ *           "error_code": 1,
+ *           "timestamp": 1,
+ *           "error_description": "OK",
+ *           "extra_data": "OK_DATA",
+ *           "response_object": [
+ *               {
+ *                   "id": 337411,
+ *                   "title": "Program title",
+ *                   "short_name": "A short name for program",
+ *                   "short_description": "A short description",
+ *                   "long_description": "A long description",
+ *                   "program_start": "2020-04-10T10:40:00.000Z",
+ *                   "program_end": "2020-04-10T11:40:00.000Z",
+ *                   "duration_seconds": 3600, (duration in seconds)
+ *                   "channel": {
+ *                       "title": "Channel title",
+ *                       "channel_number": 304
+ *                   }
+ *               }
+ *           ]
+ *       }
+ */
+exports.get_osd = function(req, res) {
+    let companyId = (req.headers.company_id) ? req.headers.company_id : 1
+    let channelNumber = req.query.channelNumber;
+    let intervalStart = new Date(Date.now()); //get current time to compare with enddate
+    let intervalEnd = new Date(Date.now());
+    intervalEnd.setHours(intervalEnd.getHours() + 12);
+    models.channels.findOne({
+        where: { company_id: companyId, channel_number: channelNumber }
+    }).then(function (channel) {
+        if (!channel) {
+            response.send_res(req, res, [], 706, -1, 'CHANNEL_NOT_FOUND', 'CHANNEL_NOT_FOUND', 'no-store');
+            return
+        }
 
+        models.epg_data.findAll({
+            attributes: ['id', 'title', 'short_name', 'short_description', 'long_description', 'program_start', 'program_end', 'duration_seconds'],
+            where: {
+                company_id: companyId,
+                program_start: {
+                    $lte: intervalEnd
+                },
+                program_end: {
+                    $and: [
+                        {$lte: intervalEnd},
+                        {$gte: intervalStart}
+                    ]
+                }
+            },
+            order: [['program_start', 'ASC']],
+            limit: 2,
+            include: [
+                {
+                    model: models.channels, required: true, attributes: ['title', 'channel_number'],
+                    where: { channel_number: channelNumber } //limit data only for this channel
+                }
+            ],
+        }).then(function (epgs) {
+            if (epgs.length == 0) {
+                response.send_res(req, res, epgs, 200, 1, 'OK_DESCRIPTION', 'OK_DATA');
+            }
+            else {
+                let cacheDuration = (epgs[epgs.length - 1].program_end.getTime() - new Date(Date.now()).getTime()) / 1000;
+                response.send_res(req, res, epgs, 200, 1, 'OK_DESCRIPTION', 'OK_DATA', 'private,max-age=' + cacheDuration);
+            }
+        }).catch(function(err) {
+            winston.error("Getting the list of channels failed with error: ", err);
+            response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
+        });
+    })
+};
 
 
 //RETURNS EPG FOR PROGRAMS CURRENTLY BEING TRANSMITTED IN THE USER'S SUBSCRIBED CHANNELS FOR THIS DEVICE
@@ -561,7 +643,7 @@ exports.get_event =  function(req, res) {
  */
 exports.current_epgs =  function(req, res) {
   const server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
-  const device_timezone = parseInt(req.query.device_timezone) || parseInt(req.auth_obj.device_timezone);
+  const device_timezone = parseInt(req.query.device_timezone) || parseInt(req.authParams.device_timezone);
   let raw_result = [];
 
   let qwhere = {};
@@ -571,22 +653,9 @@ exports.current_epgs =  function(req, res) {
   qwhere.isavailable = true;
 
   let stream_qwhere = {};
-  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
-  if (req.auth_obj.appid == 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
   stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
   stream_qwhere.stream_mode = 'live';
   stream_qwhere.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
-
-  let catchupstream_where = {
-    stream_source_id: req.thisuser.channel_stream_source_id,
-    company_id: req.thisuser.company_id
-  };
-
-  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) catchupstream_where.stream_format = {$not: 0}; //don't send mpd streams for default player
-  if (req.auth_obj.appid == 3) catchupstream_where.stream_format = 2; // send only hls streams for ios application
-  catchupstream_where.stream_mode = 'catchup'; //filter streams based on device resolution
-  catchupstream_where.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
-
 
   models.channels.findAll({
     attributes: ['title', 'channel_number'],
@@ -706,7 +775,7 @@ exports.current_epgs =  function(req, res) {
  */
 exports.get_current_epgs = function (req, res) {
   const server_time = dateFormat(Date.now(), "yyyy-mm-dd HH:MM:ss"); //start of the day for the user, in server time
-  const device_timezone = parseInt(req.query.device_timezone) || parseInt(req.auth_obj.device_timezone);
+  const device_timezone = parseInt(req.query.device_timezone) || parseInt(req.authParams.device_timezone);
 
   let raw_result = [];
 
@@ -717,22 +786,9 @@ exports.get_current_epgs = function (req, res) {
   qwhere.isavailable = true;
 
   let stream_qwhere = {};
-  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) stream_qwhere.stream_format = {$not: 0}; //don't send mpd streams for default player
-  if (req.auth_obj.appid == 3) stream_qwhere.stream_format = 2; // send only hls streams for ios application
   stream_qwhere.stream_source_id = req.thisuser.channel_stream_source_id; // streams come from the user's stream source
   stream_qwhere.stream_mode = 'live';
   stream_qwhere.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
-
-  let catchupstream_where = {
-    stream_source_id: req.thisuser.channel_stream_source_id,
-    company_id: req.thisuser.company_id
-  };
-
-  if (req.thisuser.player.toUpperCase() === 'default'.toUpperCase()) catchupstream_where.stream_format = {$not: 0}; //don't send mpd streams for default player
-  if (req.auth_obj.appid == 3) catchupstream_where.stream_format = 2; // send only hls streams for ios application
-  catchupstream_where.stream_mode = 'catchup'; //filter streams based on device resolution
-  catchupstream_where.stream_resolution = {$like: "%" + req.auth_obj.appid + "%"};
-
 
   models.channels.findAll({
     attributes: ['title', 'channel_number'],

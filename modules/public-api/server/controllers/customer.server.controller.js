@@ -44,7 +44,7 @@ var path = require('path'),
     "data": [
      {
         "id": 25224,
-        "username": "anisa",
+        "username": "username",
         "createdAt": "2019-12-31T09:51:21.000Z",
         "mac_address": "ACDBDA45DAF457",
         "pin": "1234",
@@ -54,9 +54,9 @@ var path = require('path'),
         "beta_user": 1,
         "account_lock": 0,
         "vod_stream_source": 1,
-        "firstname": "anisa",
-        "lastname": "haxhillari",
-        "email": "anisa.haxhillari@magoware.com",
+        "firstname": "your_name",
+        "lastname": "your_lastname",
+        "email": "email@example.com",
         "telephone": "012345",
         "address": "address",
         "city": "Tirane",
@@ -79,27 +79,7 @@ exports.listCustomers = function(req, res) {
             model: db.customer_data,
             attributes:['firstname','lastname','email','telephone','address','city','country','updatedAt'],
             required: true
-        },
-/*        {
-            model: db.channel_stream_source,
-            attributes:['id','stream_source'],
-            required: true
-        },
-        {
-            model: db.vod_stream,
-            attributes:[],
-            required: true,
-            include : [
-                {
-                    model: db.vod_stream_source,
-                    attributes:['id','description'],
-                    required: true
-                },
-            ]
-        },*/
-    ];
-
-
+        }];
     query.limit = 100;
     query.raw = true;
     query.order = 'customer_datum.updatedAt desc'
@@ -157,7 +137,7 @@ exports.listCustomers = function(req, res) {
     "data": [
 {
         "id": 22836,
-        "username": "anisa",
+        "username": "username",
         "createdAt": "2019-12-31T09:51:21.000Z",
         "mac_address": "ACDBDA45DAF457",
         "pin": "1234",
@@ -166,9 +146,9 @@ exports.listCustomers = function(req, res) {
         "timezone": 2,
         "beta_user": 1,
         "account_lock": 0,
-        "firstname": "Anisa",
-        "lastname": "Haxhillari",
-        "email": "anisa.haxhillari@magoware.tv",
+        "firstname": "your_name",
+        "lastname": "your_lastname",
+        "email": "email@example.com",
         "telephone": "0000",
         "address": "address1",
         "city": "Tirane",
@@ -191,27 +171,7 @@ exports.getCustomer = function(req, res) {
                 model: db.customer_data,
                 attributes:['firstname','lastname','email','telephone','address','city','country'],
                 required: true
-            },
-/*
-                {
-                    model: db.channel_stream_source,
-                    attributes:['id','stream_source'],
-                    required: true
-                },
-                {
-                    model: db.vod_stream,
-                    attributes:[],
-                    required: true,
-                    include : [
-                        {
-                            model: db.vod_stream_source,
-                            attributes:['id','description'],
-                            required: true
-                        },
-                    ]
-                },*/
-
-            ],
+            }],
             raw: true
         }).then(function(customer) {
             if (customer) {
@@ -282,6 +242,7 @@ exports.updateCustomer = function(req, res) {
                     res.status(500).send({error: {code: 500, message: 'Internal error'}})
                 });
             })
+            return null;
         }).catch(function(error) {
             winston.error('Database action failed with error: ', error);
             res.status(500).send({error: {code: 500, message: 'Internal error'}});
@@ -347,6 +308,7 @@ exports.updateCustomer = function(req, res) {
                     res.status(500).send({error: {code: 500, message: 'Internal error'}})
                 });
             })
+            return null;
         }).catch(function(error) {
             winston.error('Database action failed with error: ', error);
             res.status(500).send({error: {code: 500, message: 'Internal error'}});
@@ -407,10 +369,6 @@ exports.createCustomer = function(req, res) {
     req.body.vod_stream_source = (req.body.vod_stream_source) ? req.body.vod_stream_source : 1;
     req.body.pin = (req.body.pin) ? req.body.pin : 1234;
 
-    db.login_data.findOne({where: {username: req.body.username}}).then(function(customer){
-        if (customer) {
-            res.status(409).send({error: {code: 409, message: 'User exist'}});
-        } else {
             customerFunctions.find_or_create_customer_and_login(req, res)
                 .then(function(result) {
                     if (result.status) {
@@ -422,6 +380,4 @@ exports.createCustomer = function(req, res) {
                 winston.error('Create customer failed with error: ' + error)
                 res.status(500).send({error: {code: 500, message: 'Internal error'}})
             });
-        }
-    });
 }

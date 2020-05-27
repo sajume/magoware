@@ -9,6 +9,7 @@ var path = require('path'),
     winston = require('winston'),
     db = require(path.resolve('./config/lib/sequelize')).models,
     DBModel = db.combo;
+    const escape = require(path.resolve('./custom_functions/escape'));
 
 /**
  * Create
@@ -128,7 +129,9 @@ exports.list = function(req, res) {
         if(parseInt(query._start)) final_where.offset = parseInt(query._start);
         if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
     }
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
+
+
     final_where.distinct = 'id';
     final_where.include = [db.combo_packages];
 

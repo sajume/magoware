@@ -7,7 +7,8 @@ var path = require('path'),
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
     winston = require('winston'),
   db = require(path.resolve('./config/lib/sequelize')).models,
-  DBModel = db.vod;
+  DBModel = db.vod,
+  escape = require(path.resolve('./custom_functions/escape'));
 
 /**
  * Create
@@ -105,7 +106,7 @@ exports.totalhits = function(req, res) {
   final_where.where = qwhere;
   if(parseInt(query._start)) final_where.offset = parseInt(query._start);
   if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+  if(query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
   final_where.include = [db.vod_category, db.package];
   //end build final where
 

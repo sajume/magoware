@@ -421,6 +421,8 @@ exports.get_settings = function (req, res) {
     const get_beta_app = (req.thisuser.beta_user) ? [0, 1] : [0];
 
 
+    req.timestamp = Date.now();
+    
     models.subscription.findAll({
         attributes: ['end_date'], where: { login_id: login_data.id },
         limit: 1,

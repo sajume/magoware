@@ -218,9 +218,9 @@ exports.updateCompany = function (req, res) {
             "vod_background_url": "/files/settings/1560106114012testwhite.png",
             "assets_url": "https://devapp.magoware.tv",
             "company_logo": "/files/settings/1560106069137testwhite.png",
-            "email_address": "gentjana.lalaj@magoware.tv",
-            "email_username": "gentjana.lalaj@magoware.tv",
-            "email_password": "High-co2mand1",
+            "email_address": "email@example.com",
+            "email_username": "email@example.com",
+            "email_password": "your_password",
             "client_limit": 2132,
             "vod_limit": 391,
             "channel_limit": 2132

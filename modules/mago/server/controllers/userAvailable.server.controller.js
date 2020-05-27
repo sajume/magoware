@@ -36,8 +36,7 @@ exports.list = function(req, res) {
   final_where.where = qwhere;
   if(parseInt(query._start)) final_where.offset = parseInt(query._start);
   if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
-  if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
-  final_where.include = [];
+  if(query._orderBy) final_where.order = [[query._orderBy, query._orderDir]];
 
     if(query.group_id) qwhere.group_id = query.group_id;
     if(query.company_id) qwhere.company_id = query.company_id;

@@ -72,7 +72,16 @@ function verifyAuth(req, res, auth) {
 }
 
 const requireToken = async (req, res, next) => {
-  const token = req.get("x-authorization").split(' ')[1];
+  let tokenString = req.get("x-authorization");
+  let token;
+
+  if (tokenString) {
+    const tokenArray = tokenString.split(' ');
+    if (tokenArray.length > 0) {
+      token = tokenArray[1];
+    }
+  }
+
   let companyId = req.headers.company_id || 1;
   const encryptionKey = req.app.locals.backendsettings[companyId].new_encryption_key;
 

@@ -39,32 +39,48 @@ const db_t = require(path.resolve('./config/lib/sequelize'));
  */
 
 
-exports.create_customer_with_login = function(req,res) {
+exports.create_customer_with_login = function (req, res) {
+
+    var validate_pin = req.body.pin;
+
+    if ((`${validate_pin}`.length < 4) || (`${validate_pin}`.length > 4)){
+        return res.status(400).send({message: "PIN must have 4 numbers"});
+    }
+    else {
+        res.status(200);
+    }
+
     req.body.company_id = req.token.company_id; //save record for this company
     var limit = req.app.locals.backendsettings[req.token.company_id].asset_limitations.client_limit; //number of client accounts that this company can create
-    if((req.body.username) && (req.body.email)) {
+    if ((req.body.username) && (req.body.email)) {
         req.body.username = req.body.username.toLowerCase();
         req.body.email = req.body.email.toLowerCase();
+        req.body.country = req.body.country.trim();
 
-        saas_functions.check_limit('login_data', limit).then(function(limit_reached){
-            if(limit_reached === true) return res.status(400).send({message: "You have reached the limit number of client accounts you can create for this plan. "});
-            else{
-                customerFunctions.create_customer_with_login(req,res).then(function(data) {
-                    eventSystem.emit(req.token.company_id, eventSystem.EventType.Customer_Created, data);
-                    if(data.status) {
-                        res.status(200).send({message: data.message});
+        saas_functions.check_limit('login_data', limit).then(function (limit_reached) {
+            if (limit_reached === true) return res.status(400).send({message: "You have reached the limit number of client accounts you can create for this plan. "});
+            else {
+                customerFunctions.create_customer_with_login(req, res).then(function (data) {
+
+
+                    if (data.message.dataValues) {
+                        //data = Object.assign(req.body, data.message.dataValues);
+                        let customer_data = {...req.body, ...data.message.dataValues}
+                        eventSystem.emit(req.token.company_id, eventSystem.EventType.customer_created, customer_data);
                     }
-                    else {
+
+                    if (data.status) {
+                        res.status(200).send({message: data.message});
+                    } else {
                         res.status(400).send({message: data.message});
                     }
                 });
             }
-        }).catch(function(error){
-            winston.error("Error checking for the limit number of client accounts for company with id ",req.token.company_id," - ", error);
+        }).catch(function (error) {
+            winston.error("Error checking for the limit number of client accounts for company with id ", req.token.company_id, " - ", error);
             return res.status(400).send({message: "The limit number of client accounts you can create for this plan could not be verified. Check your log file for more information."});
         });
-    }
-    else {
+    } else {
         res.status(400).send("Email address or Username can not be blank.");
         return null
     }
@@ -211,24 +227,41 @@ exports.updateClient = async function(req, res){
         return res.status(400).send({message: "Error at checking for existing email"});
     }
 
+    let validate_pin = req.body.pin;
+
+    if ((`${validate_pin}`.length < 4) || (`${validate_pin}`.length > 4)){
+        return res.status(400).send({message: "PIN must have 4 numbers"});
+    }
+    else {
+        res.status(200);
+    }
 
     //login_data record needs to be updated as an instance for the beforeHook to work
     db.login_data.findOne({
         where: {id: req.params.customerId, company_id: req.token.company_id}
     }).then(function (client_instance) {
+
+
         return db_t.sequelize.transaction(function (t) {
+            req.body.customer_datum.country = req.body.customer_datum.country.trim();
             return db.customer_data.update(
-              req.body.customer_datum,
-              {
-                  where: {id: req.body.customer_datum.id},
-                  transaction: t
-              }
+                req.body.customer_datum,
+                {
+                    where: {id: req.body.customer_datum.id},
+                    transaction: t
+                }
             ).then(function (updated_customer) {
+
                 return client_instance.update(req.body, {where: {id: req.params.customerId}, transaction: t});
             });
         }).then(function (result) {
+
+            var qdata = req.body.customer_datum;
+            result.dataValues = Object.assign(result.dataValues, qdata);
+
+
             // Transaction has been committed
-            eventSystem.emit(req.token.company_id, eventSystem.EventType.Customer_Updated, result);
+            eventSystem.emit(req.token.company_id, eventSystem.EventType.customer_updated, result);
             return res.jsonp({status: 200, message: "Customer updated successfully"});
         }).catch(function (error) {
             // Transaction has been rolled back

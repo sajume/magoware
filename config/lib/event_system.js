@@ -5,10 +5,10 @@ const path = require('path'),
 
 //All event types should be declared here
 const EventType = {
-    Customer_Created: 'Customer_Created',
-    Customer_Updated: 'Customer_Updated',
-    Subscription_Created: 'Subscription_Created',
-    Subscription_Canceled: 'Subscription_Canceled'
+    customer_created: 'customer_created',
+    customer_updated: 'customer_updated',
+    subscription_created: 'subscription_created',
+    subscription_canceled: 'subscription_canceled'
 };
 Object.freeze(EventType);
 

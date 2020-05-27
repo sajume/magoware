@@ -11,7 +11,6 @@ module.exports = function(app) {
     /* ===== devices ===== */
     app.route('/api/devices')
         .all(policy.Authenticate)
-        .all(geoipLogic.middleware)
         .get(devices.list);
 
     app.route('/api/devices')

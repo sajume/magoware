@@ -26,10 +26,17 @@ var path = require('path'),
  * @apiParam {number} channel_number Channel number to insert EPG
  * @apiParam {datetime} program_start Datetime when program starts
  * @apiParam {datetime} program_end Datetime when program ends
- * @apiParam {String} title Porgram title
- * @apiParam {String} short_name Porgram short description
+ * @apiParam {String} title Program title
+ * @apiParam {String} short_name Program short description
  * @apiParam {String} long_description Program long description
  * @apiParam {Number} duration_seconds If missing, system will calculate
+ * @apiParam {boolean} livestream Shows if program is live
+ * @apiParam {String} genre Genre of channels
+ * @apiParam {String} audio Audio
+ * @apiParam {String} rating_score Rating score of program
+ * @apiParam {boolean} parental_control Channel parental control
+ * @apiParam {String} content_rating Content rating for minimum age
+ * @apiParam {String} banner_url Program image
  *
  * @apiError (40x) {Object} error Error-Response
  * @apiError {Number} error.code Code

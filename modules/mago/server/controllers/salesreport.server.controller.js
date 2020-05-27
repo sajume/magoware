@@ -18,7 +18,8 @@ var path = require('path'),
     pdf = require('html-pdf'),
     DBModel = db.salesreport,
     phantomjs = require('phantomjs'),
-    eventSystem = require(path.resolve("./config/lib/event_system.js"));
+    eventSystem = require(path.resolve("./config/lib/event_system.js")),
+    escape = require(path.resolve('./custom_functions/escape'));
 
 /**
  * Create
@@ -308,7 +309,8 @@ exports.list = function (req, res) {
     if (parseInt(query._start)) final_where.offset = parseInt(query._start);
     if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
-    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
+    if (query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir); //sort by specified field and specified order
+    else final_where.order = [['saledate', 'DESC']];
 
     final_where.include = [
         {model: db.combo, required: true, attributes: ['name']},
@@ -371,7 +373,7 @@ exports.sales_by_product = function (req, res) {
     if (parseInt(query._start)) final_where.offset = parseInt(query._start);
     if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
-    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
+    if (query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir); //sort by specified field and specified order
 
     final_where.attributes = ['id', 'combo_id', [sequelize.fn('max', sequelize.col('saledate')), 'saledate'], 'createdAt', [sequelize.fn('count', sequelize.col('salesreport.id')), 'count']];
     final_where.include = [{model: db.combo, required: true, attributes: ['name', 'duration', 'value']}];
@@ -386,6 +388,10 @@ exports.sales_by_product = function (req, res) {
             return res.status(404).send({message: 'No data found'});
         } else {
             res.setHeader("X-Total-Count", results.count.length);
+            for (let i = 0;i < results.rows.length; i++)
+            {
+                results.rows[i].dataValues.total = results.rows[i].dataValues.count * results.rows[i].dataValues.combo.dataValues.value;
+            }
             res.json(results.rows);
         }
     }).catch(function (err) {
@@ -424,7 +430,7 @@ exports.sales_by_date = function (req, res) {
     if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
     //sort by specified field and specified order, otherwise sort by sale date
-    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    if (query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
     else final_where.order = [['saledate', 'DESC']];
 
     final_where.attributes = ['id', [sequelize.fn('DATE_FORMAT', sequelize.col('saledate'), "%Y-%m-%d"), 'saledate'], [sequelize.fn('count', sequelize.col('saledate')), 'count'], 'active'];
@@ -481,7 +487,8 @@ exports.sales_by_month = function (req, res) {
     if (parseInt(query._start)) final_where.offset = parseInt(query._start);
     if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
 
-    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir; //sort by specified field and specified order
+    if (query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir); //sort by specified field and specified order
+    else final_where.order = [['saledate', 'DESC']];
 
     final_where.attributes = ['id', [sequelize.fn('DATE_FORMAT', sequelize.col('saledate'), "%Y-%m"), 'saledate'], [sequelize.fn('count', sequelize.col('saledate')), 'count']];
     final_where.group = [sequelize.fn('DATE_FORMAT', sequelize.col('saledate'), "%Y-%m")]; //group by month/year of sale (excluding day and time information)
@@ -498,7 +505,6 @@ exports.sales_by_month = function (req, res) {
     ];
 
     final_where.where.company_id = req.token.company_id; //return only records for this company
-    final_where.order = [['saledate', 'DESC']];
 
     DBModel.findAndCountAll(
         final_where
@@ -534,10 +540,10 @@ exports.sales_by_month = function (req, res) {
  */
 exports.sales_monthly_expiration = function (req, res) {
     var expiration_frame = "WHERE `end_date` > NOW() and company_id = " + req.token.company_id + " ";
-    var limit = "LIMIT " + req.query._start + ", " + req.query._end + " ";
-    var order = (req.query._orderDir) ? req.query._orderDir : "ASC";
+    var limit = "LIMIT " + parseInt(req.query._start) + ", " + parseInt(req.query._end) + " ";
+    var order = (req.query._orderDir) ? escape.orderDir(req.query._orderDir) : "ASC";
 
-    var account_filter = (req.query.username) ? "INNER JOIN login_data on `subscription`.`login_id` = `login_data`.`id` AND `login_data`.`username` LIKE '%" + req.query.username + "%' " : "";
+    var account_filter = (req.query.username) ? "INNER JOIN login_data on `subscription`.`login_id` = `login_data`.`id` AND `login_data`.`username` LIKE '%" + escape.value(req.query.username) + "%' " : "";
     if (req.query.startsaledate) expiration_frame = expiration_frame + "AND `end_date` > DATE_FORMAT('" + req.query.startsaledate + "', '%Y-%m-01 00:00:00') ";
     if (req.query.endsaledate) expiration_frame = expiration_frame + "AND `end_date` < DATE_FORMAT('" + req.query.endsaledate + "', '%Y-%m-01 00:00:00') ";
 

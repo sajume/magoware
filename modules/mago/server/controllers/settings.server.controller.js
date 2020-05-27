@@ -215,8 +215,7 @@ exports.list = function (req, res) {
         if(parseInt(query._start)) final_where.offset = parseInt(query._start);
         if(parseInt(query._end)) final_where.limit = parseInt(query._end)-parseInt(query._start);
     }
-    if(query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
-    final_where.include = [];
+    if(query._orderBy) final_where.order = [[query._orderBy, query._orderDir]];
     //end build final where
 
 
@@ -233,7 +232,7 @@ exports.list = function (req, res) {
         }
     }).catch(function (err) {
         winston.error("Getting setting list failed with error: ", err);
-        res.jsonp({ message: err });
+        res.jsonp({ message: err.message });
     });
 };
 

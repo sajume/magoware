@@ -1,12 +1,12 @@
 'use strict';
 
 var path = require('path'),
-    errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
-    push_msg = require(path.resolve('./custom_functions/push_messages')),
-    db = require(path.resolve('./config/lib/sequelize')).models,
-    winston = require('winston'),
-    DBModel = db.commands,
-    DBDevices = db.devices;
+  errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
+  push_msg = require(path.resolve('./custom_functions/push_messages')),
+  db = require(path.resolve('./config/lib/sequelize')).models,
+  winston = require('winston'),
+  DBModel = db.commands,
+  DBDevices = db.devices;
 
 /**
  * @api {post} /api/ads Push messages - Send ads
@@ -45,125 +45,183 @@ var path = require('path'),
 /**
  * Create
  */
-exports.create = function(req, res) {
-    const no_users = (req.body.type === "one" && req.body.username === null); //no users selected for single user messages, don't send push
-    if(no_users){
-        return res.status(400).send({
-            message: 'You did not select any devices'
-        });
+exports.create = function (req, res) {
+  const no_users = (req.body.type === "one" && req.body.username === null); //no users selected for single user messages, don't send push
+  if (no_users) {
+    return res.status(400).send({
+      message: 'You did not select any devices'
+    });
+  } else {
+    let where = {}; //the device filters will be passed here
+
+    if (req.body.type === "one") {
+      if (req.body.macadress) where.device_mac_address = req.body.macadress;
+      else if (req.body.wifi) where.device_wifimac_address = req.body.wifi;
+      else where.login_data_id = req.body.username; //if only one user is selected, filter devices of that user
     }
-    else{
-        let where = {}; //the device filters will be passed here
 
-        if(req.body.type === "one") {
-            if(req.body.macadress) where.device_mac_address = req.body.macadress;
-            else if(req.body.wifi) where.device_wifimac_address = req.body.wifi;
-            else where.login_data_id = req.body.username; //if only one user is selected, filter devices of that user
-        }
+    if (req.body.appid && req.body.appid.length > 0) {
+      var device_types = [];
+      for (let j = 0; j < req.body.appid.length; j++) device_types.push(parseInt(req.body.appid[j]));
+    } else return res.status(400).send({message: "You did not select any device types"});
 
-        if (req.body.appid && req.body.appid.length > 0) {
-            var device_types = [];
-            for(let j=0; j<req.body.appid.length; j++) device_types.push(parseInt(req.body.appid[j]));
-        }
-        else return res.status(400).send({ message: "You did not select any device types" });
-
-        if(req.body.sendtoactivedevices) where.device_active = true; //if we only want to send push msgs to active devices, add condition
-        where.appid = {$in: device_types}; //filter devices by application id
-        where.company_id = req.token.company_id;
+    if (req.body.sendtoactivedevices) where.device_active = true; //if we only want to send push msgs to active devices, add condition
+    where.appid = {$in: device_types}; //filter devices by application id
+    where.company_id = req.token.company_id;
 
 
-        DBDevices.findAll(
-            {
-                attributes: ['googleappid', 'appid', 'app_version'],
-                where: where,
-                include: [{model: db.login_data, attributes: ['username'], required: true, raw: true, where: {get_messages: true, company_id: req.token.company_id}}]
-            }
-        ).then(function(result) {
-            if (!result || result.length === 0) {
-                return res.status(401).send({
-                    message: 'No devices found with these filters'
-                });
-            } else {
-                if(req.body.command === 'login_user') {
-                    let parameters = {
-                            "username": result[0].login_datum.username,
-                            "password": req.body.password
-                    };
-                    let message = new push_msg.ACTION_PUSH("Action", "Running action", '5', req.body.command, parameters);
-                    for(let i=0; i<result.length; i++)
-                        push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, 5000, false, false, function(result){});
-                }
-                else if(req.body.command === 'show_username'){
-                    let parameters = {
-                            "username": result[0].login_datum.username,
-                            "top": req.body.top,
-                            "left": req.body.left
-                    };
-                    let message = new push_msg.INFO_PUSH("Action", "Performing an action", '6', parameters);
-                    for(let i=0; i<result.length; i++)
-                        push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, 5000, true, false, function(result){});
-                }
-                else{
-                    const min_ios_version = (company_configurations.ios_min_version) ? parseInt(company_configurations.ios_min_version) : parseInt('1.3957040');
-                    const android_phone_min_version = (company_configurations.android_phone_min_version) ? parseInt(company_configurations.android_phone_min_version) : '1.1.2.2';
-                    const min_stb_version = (company_configurations.stb_min_version) ? parseInt(company_configurations.stb_min_version) : '2.2.2';
-                    const android_tv_min_version = (company_configurations.android_tv_min_version) ? parseInt(company_configurations.android_tv_min_version) : '6.1.3.0';
-                    for(let i=0; i<result.length; i++){
-                        if(result[i].appid === 1 && result[i].app_version >= min_stb_version)
-                            var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
-                        else if(result[i].appid === 2 && result[i].app_version >= android_phone_min_version)
-                            var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
-                        else if(parseInt(result[i].appid) === parseInt('3') && parseInt(result[i].app_version) >= min_ios_version)
-                            var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
-                        else if(result[i].appid === 4 && result[i].app_version >= android_tv_min_version)
-                            var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
-                        else if(['5', '6'].indexOf(result[i].appid))
-                            var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
-                        else var message = {
-                                "action": req.body.command,
-                                "parameter1": req.body.parameter1,
-                                "parameter2": req.body.parameter2,
-                                "parameter3": req.body.parameter3
-                            };
-                        push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, req.body.timetolive, false, true, function(result){});
-                    }
-                }
-                return res.status(200).send({
-                    message: 'Message sent'
-                });
-            }
+    DBDevices.findAll(
+      {
+        attributes: ['googleappid', 'appid', 'app_version'],
+        where: where,
+        include: [{
+          model: db.login_data,
+          attributes: ['username'],
+          required: true,
+          raw: true,
+          where: {get_messages: true, company_id: req.token.company_id}
+        }]
+      }
+    ).then(function (result) {
+      if (!result || result.length === 0) {
+        return res.status(401).send({
+          message: 'No devices found with these filters'
         });
-    }
-};
-
-//returns list of commands stored in the database, for the listView
-exports.list = function(req, res) {
-    var query = {};
-    var where = {};
-    var join_where = {};
-
-    if(req.query.status) where.status = req.query.status;
-    if(req.query.command) where.command = {like: '%'+req.query.command+'%'};
-    if(req.query.username) join_where.username = {like: '%'+req.query.username+'%'};
-
-    query.attributes = ['id', 'googleappid', 'command', 'status', 'createdAt'];
-    query.include = [{model: db.login_data, attributes: ['username'], required: true, where: join_where}];
-
-    query.where = where;
-
-    query.where.company_id = req.token.company_id; //return only records for this company
-
-    DBModel.findAndCountAll(query).then(function(results) {
-        if (!results) {
-            return res.status(404).send({
-                message: 'No data found'
+      } else {
+        if (req.body.command === 'login_user') {
+          let parameters = {
+            "username": result[0].login_datum.username,
+            "password": req.body.password
+          };
+          let message = new push_msg.ACTION_PUSH("Action", "Running action", '5', req.body.command, parameters);
+          for (let i = 0; i < result.length; i++)
+            push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, 5000, false, true, function (result) {
+            });
+        } else if (req.body.command === 'show_username') {
+          let parameters = {
+            "username": result[0].login_datum.username,
+            "top": req.body.top,
+            "left": req.body.left
+          };
+          let message = new push_msg.INFO_PUSH("Action", "Performing an action", '6', parameters);
+          for (let i = 0; i < result.length; i++)
+            push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, 5000, true, true, function (result) {
             });
         } else {
-            res.setHeader("X-Total-Count", results.count);
-            res.json(results.rows);
+          const min_ios_version = (company_configurations.ios_min_version) ? parseInt(company_configurations.ios_min_version) : parseInt('1.3957040');
+          const android_phone_min_version = (company_configurations.android_phone_min_version) ? parseInt(company_configurations.android_phone_min_version) : '1.1.2.2';
+          const min_stb_version = (company_configurations.stb_min_version) ? parseInt(company_configurations.stb_min_version) : '2.2.2';
+          const android_tv_min_version = (company_configurations.android_tv_min_version) ? parseInt(company_configurations.android_tv_min_version) : '6.1.3.0';
+          for (let i = 0; i < result.length; i++) {
+            if (result[i].appid === 1 && result[i].app_version >= min_stb_version)
+              var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
+            else if (result[i].appid === 2 && result[i].app_version >= android_phone_min_version)
+              var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
+            else if (parseInt(result[i].appid) === parseInt('3') && parseInt(result[i].app_version) >= min_ios_version)
+              var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
+            else if (result[i].appid === 4 && result[i].app_version >= android_tv_min_version)
+              var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
+            else if (['5', '6'].indexOf(result[i].appid))
+              var message = new push_msg.COMMAND_PUSH("Command", "Running command", '4', req.body.command, req.body.parameter1, req.body.parameter2, req.body.parameter3);
+            else var message = {
+                "action": req.body.command,
+                "parameter1": req.body.parameter1,
+                "parameter2": req.body.parameter2,
+                "parameter3": req.body.parameter3
+              };
+            push_msg.send_notification(result[i].googleappid, req.app.locals.backendsettings[req.token.company_id].firebase_key, result[i].login_datum.id, message, req.body.timetolive, true, true, function (result) {
+            });
+          }
         }
-    }).catch(function(err) {
-        winston.error("Finding list of sent commands failed with error: ", err);
-        res.jsonp(err);
+        return res.status(200).send({
+          message: 'Message sent'
+        });
+      }
     });
+  }
+};
+
+exports.remote_login = async function (req, res) {
+  const deviceId = req.body.device_id;
+  const password = req.body.password;
+  const username = req.body.username;
+  const company_id = req.token.company_id;
+
+  if (!deviceId || !password) {
+    return res.status(500).jsonp({message: "Error at remote login, missing parameters"});
+  }
+
+  try {
+    const device = await DBDevices.findOne({
+      attributes: ['googleappid', 'appid', 'app_version'],
+      where: {
+        id: deviceId,
+        company_id: company_id
+      }
+    });
+
+    if (!device) {
+      return res.status(500).jsonp({message: "Error at remote login, no device found"});
+    }
+
+    const parameters = {
+      "username": username,
+      "password": password
+    };
+
+    let userId;
+
+    const user = await db.login_data.findOne({
+      where: {
+        username: username,
+        company_id: company_id
+      }
+    });
+    if(!user) {
+      return res.status(500).jsonp({message: "Error at remote login, no user found"});
+    }
+    userId = user.id;
+
+    const message = new push_msg.ACTION_PUSH("Action", "Running action", '5', 'login_user', parameters);
+    push_msg.send_notification(device.googleappid, req.app.locals.backendsettings[company_id].firebase_key, userId, message, 5000, true, true, function (result) {
+    });
+    return res.status(200).json({message: "Remote Login completed successfully!"});
+  } catch
+    (e) {
+    winston.error("Finding list of sent commands failed with error: ", e);
+    res.status(500).jsonp({message: "Error at remote login"});
+  }
+}
+;
+
+//returns list of commands stored in the database, for the listView
+exports.list = function (req, res) {
+  var query = {};
+  var where = {};
+  var join_where = {};
+
+  if (req.query.status) where.status = req.query.status;
+  if (req.query.command) where.command = {like: '%' + req.query.command + '%'};
+  if (req.query.username) join_where.username = {like: '%' + req.query.username + '%'};
+
+  query.attributes = ['id', 'googleappid', 'command', 'status', 'createdAt'];
+  query.include = [{model: db.login_data, attributes: ['username'], required: true, where: join_where}];
+
+  query.where = where;
+
+  query.where.company_id = req.token.company_id; //return only records for this company
+
+  DBModel.findAndCountAll(query).then(function (results) {
+    if (!results) {
+      return res.status(404).send({
+        message: 'No data found'
+      });
+    } else {
+      res.setHeader("X-Total-Count", results.count);
+      res.json(results.rows);
+    }
+  }).catch(function (err) {
+    winston.error("Finding list of sent commands failed with error: ", err);
+    res.jsonp(err);
+  });
 };

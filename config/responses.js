@@ -29,6 +29,12 @@ module.exports = {
         let clear_response = new this.APPLICATION_RESPONSE(req.body.language, status, error, description, extra_data, result);
         delete clear_response.status_code;
         clear_response.response_code = status;
+
+        //send timestamp if present
+        if (req.timestamp) {
+            clear_response.timestamp = req.timestam;
+        }
+
         res.status(status).send(clear_response);
     },
 
@@ -36,11 +42,14 @@ module.exports = {
 
     send_res_get: function(req, res, result, status, error, description, extra_data, header){
         let clear_response = new this.APPLICATION_RESPONSE(req.body.language, status, error, description, extra_data, result);
+        if (req.timestamp) {
+            clear_response.timestamp = req.timestamp;
+        }
         res.send(clear_response);
     },
 
 
-    send_res: function(req, res, result, status, error, description, extra_data, header){
+    send_res: function(req, res, result, status, error, description, extra_data, cacheHeader){
         /*      var evaluation_tag = crypto.createHash('sha256').update(JSON.stringify(result)).digest('hex');
                 var client_etag = (!req.header('clientsETag')) ? "" : req.header('clientsETag');
                 var status_code = (evaluation_tag!==client_etag || req.path === '/apiv2/settings/settings') ? status : 304; // if the response data is different from the one in the app cache, send status different that 304
@@ -50,7 +59,16 @@ module.exports = {
                 res.setHeader('etag', evaluation_tag);
                 res.setHeader('cache-control', cache_header);
                 var clear_response = new this.APPLICATION_RESPONSE(req.body.language, status_code, error, description, extra_data, response_data);*/
+
+        if (cacheHeader) {
+            res.setHeader('cache-control', cacheHeader);
+        }
+        
         let clear_response = new this.APPLICATION_RESPONSE(req.body.language, status, error, description, extra_data, result);
+        if (req.timestamp) {
+            clear_response.timestamp = req.timestamp;
+        }
+
         res.send(clear_response);
     },
 

@@ -60,7 +60,11 @@ exports.update = function(req, res) {
     var updateData = req.vodmenucarousel;
 
    let carousel_url = '';
-    if(req.body.category_id === null || req.body.category_id === '') {
+
+    if (!req.body.category_id){
+        carousel_url = req.body.url + '?' + 'pin_protected=' + req.body.pin_protected + '&' + 'adult_content=' + req.body.adult_content+ '&' + 'order_by=' +req.body.order_by+ '&' +'order_dir=' + req.body.order_dir;
+    }
+    else if(req.body.category_id === null || req.body.category_id === '' || req.body.category_id === 'undefined') {
         carousel_url = req.body.url + '?' + 'pin_protected=' + req.body.pin_protected + '&' + 'adult_content=' + req.body.adult_content+ '&' + 'order_by=' +req.body.order_by+ '&' +'order_dir=' + req.body.order_dir;
     }
     else {
@@ -139,7 +143,7 @@ exports.list = function (req, res) {
     final_where.where = qwhere;
     if (parseInt(query._start)) final_where.offset = parseInt(query._start);
     if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
-    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir
+    if (query._orderBy) final_where.order = [[query._orderBy, query._orderDir]]
     else final_where.order = [['order', 'ASC']];
 
     final_where.include = [];

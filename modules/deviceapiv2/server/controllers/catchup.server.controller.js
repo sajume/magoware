@@ -281,6 +281,9 @@ exports.catchup_stream =  function(req, res) {
                 thestream = thestream.replace('[epochtime]', catchup_moment);
 
             }
+            else if (catchup_streams.channel_streams[0].recording_engine == 'nimble') {
+                thestream = thestream.replace('[epochtime]', req.body.timestart + '-60');
+            }
             else {  //assume it is flussonic
 
                 //if timestamp is bigger than 2.5 ours

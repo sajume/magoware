@@ -14,7 +14,8 @@ var path = require('path'),
 	SalesData = db.salesreport,
 	dateFormat = require('dateformat'),
 	email_templates = db.email_templates,
-	customer_data = db.customer_data;
+	customer_data = db.customer_data,
+    eventSystem = require(path.resolve("./config/lib/event_system.js"));
 
 
 exports.createaccount = function (req, res) {
@@ -84,6 +85,7 @@ exports.createaccount = function (req, res) {
 			var COMPANY_ID = typeof COMPANY_ID !== 'undefined' ? COMPANY_ID : 1;
 			if (token !== 1) {
 				var salt = authentication.makesalt();
+				const player = req.app.locals.advanced_settings[req.authParams.companyId].default_player;
 
 				customer_data.create({
 					firstname: req.body.firstname,
@@ -103,7 +105,7 @@ exports.createaccount = function (req, res) {
 						pin: 1234,
 						show_adult: 0,
 						auto_timezone: 1,
-						player: (company_configurations.default_player) ? company_configurations.default_player : 'default',
+						player: player ? player : 'default',
 						activity_timeout: 10800,
 						get_messages: (company_configurations.get_messages) ? company_configurations.get_messages : false,
 						get_ads: (company_configurations.get_ads) ? company_configurations.get_ads : false,
@@ -206,6 +208,9 @@ exports.createAccountV2 = function (req, res) {
 			telephone: req.body.telephone,
 			group_id: 1 //todo: how will it be determined what company belongs the user during signup
 		}).then(function (new_customer) {
+            eventSystem.emit(company_id, eventSystem.EventType.customer_created, new_customer);
+			const player = req.app.locals.advanced_settings[req.authParams.companyId].default_player;
+
 			return login_data.create({
 				customer_id: new_customer.id, //todo: saas:  how will it be determined what company belongs the user during signup
 				company_id: company_id,
@@ -217,7 +222,7 @@ exports.createAccountV2 = function (req, res) {
 				pin: 1234,
 				show_adult: 0,
 				auto_timezone: 1,
-				player: (company_configurations.default_player) ? company_configurations.default_player : 'default',
+				player: player ? player : 'default',
 				activity_timeout: 10800,
 				get_messages: (company_configurations.get_messages) ? company_configurations.get_messages : false,
 				get_ads: (company_configurations.get_ads) ? company_configurations.get_ads : false,
@@ -236,7 +241,7 @@ exports.createAccountV2 = function (req, res) {
 							name: new_customer.firstname + ' ' + new_customer.lastname,
 							appName: req.app.locals.backendsettings[company_id].company_name,
 							url: req.app.locals.originUrl + '/apiv2/sites/confirm-account/' + token
-	
+
 						}, function (err, emailHTML) {
 							return sendConfirmEmail(new_customer.email, emailHTML);
 						});

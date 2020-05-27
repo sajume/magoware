@@ -38,7 +38,12 @@ export default function (nga, admin) {
                 .targetEntity(admin.getEntity('packagetypes'))
                 .targetField(nga.field('description'))
                 .attributes({ placeholder: 'Choose the Package Type from dropdown list' })
-                .validation({ required: true })
+                .validation({validator: function(value) {
+                        if(value === null || value === ''){
+                            throw new Error('Please Select Package Type');
+                        }
+                    }
+                })
                 .permanentFilters({ package_type_id: [1,2] })
                 .label('Package Type'),
             nga.field('template')

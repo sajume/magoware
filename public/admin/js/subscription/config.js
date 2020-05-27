@@ -77,15 +77,18 @@ export default function (nga, admin){
                 .targetEntity(admin.getEntity('CustomerAccount'))
                 .targetField(nga.field('username'))
                 .attributes({ placeholder: 'Choose Username from dropdown list' })
-                .validation({validator: function(value) {
                 	//value.length > 1 because of reference_many
-                	if(value.length > 1){
-                        throw new Error('Please select only one username');
-					}else if (value === null || value === '') {
-                        throw new Error('Please select username');
-					}
+                .validation({validator: function(value) {
+                        if(value === null || value === ''){
+                            throw new Error('Please Select username');
+                        }
+                        else
+                        if(value.length > 1){
+                            throw new Error('Please select only one username');
+                        }
                     }
                 })
+
                 .remoteComplete(true, {
                     refreshDelay: 300,
                     // populate choices from the response of GET /posts?q=XXX
@@ -114,7 +117,12 @@ export default function (nga, admin){
                     searchQuery: function(search) { return { q: search }; }
                 })
                 .perPage(10) // limit the number of results to 10
-                .validation({ required: true })
+                .validation({validator: function(value) {
+                        if(value === null || value === ''){
+                            throw new Error('Please Select On Behalf Id ');
+                        }
+                    }
+                })
                 .label('On Behalf Id'),
 			nga.field('start_date','date')
                 .attributes({ placeholder: 'Start date' })
@@ -137,13 +145,14 @@ export default function (nga, admin){
 			nga.field('login_id', 'reference')
 					.targetEntity(admin.getEntity('LoginData'))
 					.targetField(nga.field('username'))
-					.attributes({ placeholder: 'Select Account' })
+                    .editable(false)
+			/*		.attributes({ placeholder: 'Select Account' })
 					.validation({validator: function(value) {
 							if(value === null || value === ''){
 								throw new Error('Please Select Username');
 							}
 						}
-					})
+					})*/
 					.label('Username *'),
 			nga.field('start_date','date')
 					.validation({ required: true, validator: function(start_date_input, input_list){

@@ -5,7 +5,8 @@ const path = require('path'),
   response = require(path.resolve("./config/responses.js")),
   crypto = require('crypto'),
   models = db.models,
-  winston = require(path.resolve('./config/lib/winston'));
+  winston = require(path.resolve('./config/lib/winston')),
+  escape = require(path.resolve('./custom_functions/escape'));
 const sequelizes = require(path.resolve('./config/lib/sequelize'));
 const async = require('async');
 const sqlstring = require('sqlstring');
@@ -1115,14 +1116,14 @@ exports.related = function (req, res) {
 
     winston.info(director_matching_score, actor_matching_score)
 
-    let where_condition = " vod.id <> " + req.body.vod_id + " AND isavailable = true AND vod_stream.stream_source_id = " + sqlstring.escape(req.thisuser.vod_stream_source) + " AND expiration_time > NOW() ";
+    let where_condition = " vod.id <> " + parseInt(req.body.vod_id) + " AND isavailable = true AND vod_stream.stream_source_id = " + sqlstring.escape(req.thisuser.vod_stream_source) + " AND expiration_time > NOW() ";
     where_condition += "AND vod_stream.stream_resolution LIKE '%" + req.auth_obj.appid + "%' ";
     if (req.thisuser.show_adult === true) where_condition = where_condition + " AND pin_protected = false ";
     if (!req.body.show_adult || req.body.show_adult !== 'true') where_condition = where_condition + " AND adult_content = false ";
 
     where_condition += " AND subscription.login_id = " + req.thisuser.id + " and subscription.end_date > NOW() AND package.package_type_id = " + Number(req.auth_obj.screensize + 2) + " ";
 
-    where_condition += " AND company_id = " + req.thisuser.company_id + "";
+    where_condition += " AND vod.company_id = " + req.thisuser.company_id + "";
 
     const related_query = "SELECT DISTINCT vod.id, " +
       " ( " +
@@ -1666,7 +1667,7 @@ exports.get_vod_item_related = function (req, res) {
 
       const offset = isNaN(parseInt(req.query._start)) ? 0 : parseInt(req.query._start);
       const limit = isNaN(parseInt(req.query._end)) ? req.app.locals.backendsettings[req.thisuser.company_id].vod_subset_nr : parseInt(req.query._end) - offset;
-      const order_by = (req.query._orderBy) ? req.query._orderBy + ' ' + req.query._orderDir : "matching_score DESC";
+      const order_by = (req.query._orderBy) ? escape.col(req.query._orderBy) + ' ' + escape.orderDir(req.query._orderDir) : "matching_score DESC";
       const related_query = "SELECT DISTINCT CAST(vod.id AS CHAR) AS id, vod.title, 'film' as vod_type, " +
         "CONCAT(vod.description, '<p><strong>Director:</strong> ', vod.director, ' </p><p><strong>Starring:</strong> ', vod.starring, '</p>') AS description, vod.rate, vod.duration, " +
         "vod.pin_protected, YEAR(vod.release_date) as year, UNIX_TIMESTAMP(vod.createdAt) as dataadded, CONCAT('" + req.app.locals.backendsettings[req.thisuser.company_id].assets_url + "', vod.icon_url) AS icon, " +
@@ -1765,7 +1766,7 @@ exports.get_vod_items_recommended = function (req, res) {
       qwhere.where.expiration_time = {$gte: Date.now()};
       qwhere.where.company_id = req.thisuser.company_id;
 
-      if (query._orderBy) qwhere.order = query._orderBy + ' ' + query._orderDir;
+      if (query._orderBy) qwhere.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
       qwhere.include = [
         {
           model: models.vod_stream,
@@ -1908,8 +1909,8 @@ exports.get_vod_list = function (req, res) {
             vod_final_where.limit = isNaN(parseInt(query._end)) ? req.app.locals.backendsettings[req.thisuser.company_id].vod_subset_nr : parseInt(query._end) - vod_final_where.offset;
 
             if (query._orderBy === 'createdAt') {
-              vod_final_where.order = 'dataadded' + ' ' + query._orderDir;
-            } else if (query._orderBy) vod_final_where.order = query._orderBy + ' ' + query._orderDir;
+              vod_final_where.order = 'dataadded' + ' ' + escape.orderDir(query._orderDir);
+            } else if (query._orderBy) vod_final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
 
 
             vod_final_where.where.isavailable = true;
@@ -2021,8 +2022,8 @@ exports.get_vod_list = function (req, res) {
             tv_shows_final_where.limit = isNaN(parseInt(query._end)) ? req.app.locals.backendsettings[req.thisuser.company_id].vod_subset_nr : parseInt(query._end) - tv_shows_final_where.offset;
 
             if (query._orderBy === 'createdAt') {
-              tv_shows_final_where.order = 'dataadded' + ' ' + query._orderDir;
-            } else if (query._orderBy) tv_shows_final_where.order = query._orderBy + ' ' + query._orderDir;
+              tv_shows_final_where.order = 'dataadded' + ' ' + escape.orderDir(query._orderDir);
+            } else if (query._orderBy) tv_shows_final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
 
 
             tv_shows_final_where.where.is_available = true;
@@ -2269,7 +2270,7 @@ exports.get_movie_details = function (req, res) {
             }
           }).title;
         } catch (error) {
-          
+
         }
       }
 
@@ -2445,22 +2446,26 @@ exports.get_tv_series_data = function (req, res) {
  */
 exports.vod_menu_list = function (req, res) {
   // {1: 'Android Set Top Box', 2: 'Android Smart Phone',3: 'IOS', 4: 'Android Smart TV', 5: 'Samsung Smart TV', 6: 'Apple TV'};
-  let whr;
+  let whr = {isavailable: true};
   if (!req.thisuser.show_adult || req.auth_obj.screensize == 2 || req.auth_obj.screensize == 3) {
-    whr = {company_id: req.thisuser.company_id, pin_protected: 0}
+    whr.company_id = req.thisuser.company_id;
+    whr.pin_protected = 0;
   } else {
-    whr = {company_id: req.thisuser.company_id}
+    whr.company_id = req.thisuser.company_id;
   }
 
+  const showAdult = req.query.show_adult == "false";
+  if(showAdult) whr.is_adult = false;
+
   models.vod_menu.findAll({
-    attributes: ['id', 'name', 'description', 'order', 'pin_protected', 'isavailable',
+    attributes: ['id', 'name', 'description', 'order', 'pin_protected','is_adult', 'isavailable',
     [db.sequelize.fn('concat', req.app.locals.backendsettings[req.thisuser.company_id].assets_url, db.sequelize.col('icon_url')), 'icon_url']
   ],
     include: [{
       model: models.vod_menu_carousel,
       attributes: ['id', 'name', 'description', 'order', 'url', 'isavailable'],
       required: false,
-      where: {company_id: req.thisuser.company_id}
+      where: {company_id: req.thisuser.company_id, isavailable: true}
     }],
     order: [
       [models.vod_menu_carousel, 'order', 'ASC'],

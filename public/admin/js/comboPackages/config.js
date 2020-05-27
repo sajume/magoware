@@ -56,7 +56,12 @@ export default function (nga, admin) {
 					return (entry["package_name"] + ' - ' + entry["package_type.description"]);
 				}))
 				.perPage(-1)
-				.validation({ required: true })
+                .validation({validator: function(value) {
+                        if(value === null || value === ''){
+                            throw new Error('Please Select Package');
+                        }
+                    }
+                })
                 .attributes({ placeholder: 'Select packages' })
 				.label('Package'),
             nga.field('template')

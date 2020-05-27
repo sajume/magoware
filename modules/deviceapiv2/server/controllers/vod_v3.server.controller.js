@@ -6,7 +6,8 @@ const path = require('path'),
     response = require(path.resolve("./config/responses.js")),
     crypto = require('crypto'),
     models = db.models,
-    winston = require(path.resolve('./config/lib/winston'));
+    winston = require(path.resolve('./config/lib/winston')),
+    escape = require(path.resolve('./custom_functions/escape'));
 const async = require('async');
 const config = require(path.resolve('./config/config'));
 const moment = require('moment');
@@ -443,7 +444,7 @@ exports.reaction = function (req, res) {
                 login_id: req.thisuser.id,
                 vod_id: req.params.vod_id,
                 company_id: req.thisuser.company_id,
-                resume_position: vod_resume.resume_position,
+                //resume_position: vod_resume.resume_position,
                 reaction: req.params.reaction,
                 device_id: req.auth_obj.boxid
             }).catch(function (error) {
@@ -466,7 +467,7 @@ exports.reaction = function (req, res) {
  *
  * @apiUse header_auth
  *
- *@apiDescription Saves vod favorite for a movie. Favorite values are 0 (watch), 1 (favorite)
+ *@apiDescription Saves vod favorite for a movie. Favorite values are 0 (default), 1 (favorite/watchlist)
  *
  *
  * Copy paste this auth for testing purposes
@@ -485,11 +486,7 @@ exports.favorite = function (req, res) {
                 login_id: req.thisuser.id,
                 vod_id: req.params.vod_id,
                 company_id: req.thisuser.company_id,
-                //resume_position: vod_resume.resume_position,
-                //reaction: vod_resume.reaction,
                 device_id: req.auth_obj.boxid,
-                seen_details: vod_resume.seen_details,
-                //vod_type: 'film',
                 favorite: req.params.favorite
             }).catch(function (error) {
             winston.error("Saving the client's favorite movie failed with error: ", error);
@@ -605,7 +602,7 @@ exports.get_related_movies = function (req, res) {
 
     const page_length = (req.app.locals.backendsettings[req.thisuser.company_id].vod_subset_nr) ? req.app.locals.backendsettings[req.thisuser.company_id].vod_subset_nr : 30; //max nr of movies in the response
     if (!req.query.page) req.query.page = 1; //if page param is missing, set page to 1
-    const vodId = req.params.vod_id;
+    const vodId = parseInt(req.params.vod_id);
 
     if (!vodId) {
         return response.send_res(req, res, [], 706, -1, 'DATABASE_ERROR_DESCRIPTION', 'DATABASE_ERROR_DATA', 'no-store');
@@ -648,7 +645,7 @@ exports.get_related_movies = function (req, res) {
 
             //prepare the where clause
             let where_condition = "";
-            where_condition += " vod.id <> " + req.params.vod_id; //exclude current movie from list
+            where_condition += " vod.id <> " + vodId; //exclude current movie from list
             where_condition += " AND vod.company_id = " + req.thisuser.company_id + " ";
             where_condition += " AND vod.isavailable = true"; //return only available movies
             where_condition += " AND expiration_time > NOW() "; //do not return movies that have expired
@@ -844,7 +841,7 @@ exports.get_paused_movies = function (req, res) {
                 model: models.vod_resume,
                 required: true,
                 attributes: ['login_id', 'favorite', 'percentage_position'],
-                where: {login_id: user_id, percentage_position: {lt: 90}}
+                where: {login_id: user_id, percentage_position: {$lt: 90}&&{gt:0}}
             }
         ];
         //search for vod
@@ -1162,7 +1159,7 @@ exports.get_added_movies = function (req, res) {
     final_where.where.pin_protected = (req.query.pin_protected === 'true') ? {in: [true, false]} : false; //pin protected content returned only if request explicitly asks for it
     final_where.where.adult_content = (req.query.show_adult === 'true') ? {in: [true, false]} : false; //adult content returned only if request explicitly asks for it
 
-    const order_by = (req.query.order_by) ? req.query.order_by : 'createdAt';
+    const order_by = (req.query.order_by) ? req.query.order_by : 'release_date';
     const order_dir = (req.query.order_dir) ? req.query.order_dir : 'DESC';
     final_where.order = [[order_by, order_dir]];
 

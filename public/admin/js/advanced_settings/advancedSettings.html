@@ -298,6 +298,28 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <h3>Default Media Player</h3>
+                    <small class="form-text text-muted">{{advanced_settings.default_player.description}}</small>
+                    <br>
+                    <br>
+                    <div class="container">
+<!--                        <label for="vodConf">Vod Transaction Duration</label>-->
+<!--                        <input type="text" class="form-control" id="defaultPlayer"-->
+<!--                               ng-model="advanced_settings.default_player.value"-->
+<!--                               placeholder="Default Player">-->
+
+                       <div>
+                           <label for="defaultPlayer">Choose a car:</label>
+                           <select name="defaultPlayer" id="defaultPlayer" ng-model="advanced_settings.default_player.value">
+                               <option value="default">Default</option>
+                               <option value="exoplayer">ExoPlayer</option>
+                           </select>
+                       </div>
+                        <br>
+                    </div>
+                </div>
+
 
                 <hr>
                 <button type="submit" class="btn btn-default pull-right">Submit</button>

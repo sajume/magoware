@@ -7,7 +7,8 @@ var path = require('path'),
     winston = require('winston'),
     sequelize = require('sequelize'),
     dbRaporte = require(path.resolve('./config/lib/sequelize')),
-    moment = require('moment');
+    moment = require('moment'),
+    escape = require(path.resolve('./custom_functions/escape'));
 LoginData = db.login_data;
 Combo = db.combo;
 SalesReport = db.salesreport;
@@ -123,8 +124,8 @@ exports.listSalesByProduct = function(req, res) {
  */
 exports.listPreviousDaySalesByProduct = function (req, res) {
     dbRaporte.sequelize.query("SELECT c.NAME AS 'product', Count( sr.id ) AS 'total' " +
-            "FROM saas_test.combo c " +
-            "INNER JOIN saas_test.salesreport sr ON sr.combo_id = c.id " +
+            "FROM combo c " +
+            "INNER JOIN salesreport sr ON sr.combo_id = c.id " +
             "WHERE saledate = subdate( CURRENT_DATE, 1 ) AND sr.active = 1 AND c.isavailable = 1 " +
             "GROUP BY c.name ",
         {type: dbRaporte.sequelize.QueryTypes.SELECT})
@@ -154,8 +155,8 @@ exports.listPreviousDaySalesByProduct = function (req, res) {
  */
 exports.listMonthSalesByProduct = function (req, res) {
     dbRaporte.sequelize.query("SELECT c.NAME AS 'product', Count( sr.id ) AS 'total' " +
-            "FROM saas_test.combo c " +
-            "INNER JOIN saas_test.salesreport sr ON sr.combo_id = c.id " +
+            "FROM combo c " +
+            "INNER JOIN salesreport sr ON sr.combo_id = c.id " +
             "WHERE ( saledate BETWEEN DATE_FORMAT( NOW( ), '%Y-%m-01' ) AND NOW( ) ) AND sr.active = 1 AND c.isavailable = 1 " +
             "GROUP BY c.name",
         {type: dbRaporte.sequelize.QueryTypes.SELECT})
@@ -186,8 +187,8 @@ exports.listMonthSalesByProduct = function (req, res) {
 exports.listLastMonthSalesByProduct = function (req, res) {
     const company_id = req.token.company_id || 1;
     dbRaporte.sequelize.query("SELECT c.NAME AS 'product', Count( sr.id ) AS 'total' " +
-            "FROM saas_test.combo c " +
-            "INNER JOIN saas_test.salesreport sr ON sr.combo_id = c.id " +
+            "FROM combo c " +
+            "INNER JOIN salesreport sr ON sr.combo_id = c.id " +
             "WHERE saledate BETWEEN last_day( curdate( ) - INTERVAL 2 MONTH ) + INTERVAL 1 DAY AND company_id = " +company_id +
             " AND last_day( curdate( ) - INTERVAL 1 MONTH ) " +
             "AND sr.active = 1 AND c.isavailable = 1 " +
@@ -221,8 +222,8 @@ exports.listLastMonthSalesByProduct = function (req, res) {
 exports.listEachMonthSalesByMonth = function (req, res) {
     dbRaporte.sequelize.query("SELECT CONCAT ( MIN( DATE( saledate ) ), ' -- ', MAX( DATE( saledate ) ) ) AS 'duration', " +
             " count( saledate ) AS 'total' " +
-            "FROM saas_test.combo c " +
-            "INNER JOIN saas_test.salesreport sr ON sr.combo_id = c.id " +
+            "FROM combo c " +
+            "INNER JOIN salesreport sr ON sr.combo_id = c.id " +
             "WHERE saledate BETWEEN MAKEDATE( YEAR ( now( ) ), 1 ) AND ( CURRENT_DATE ) " +
             "AND active = '1' AND c.isavailable = 1 " +
             "GROUP BY MONTH ( saledate ) ",
@@ -254,8 +255,8 @@ exports.listEachMonthSalesByMonth = function (req, res) {
 exports.listLastYearSales = function (req, res) {
     dbRaporte.sequelize.query("SELECT CONCAT ( MIN( DATE( saledate ) ), ' -- ', MAX( DATE( saledate ) ) ) AS 'duration'," +
             "count( saledate ) AS total " +
-            "FROM saas_test.combo c " +
-            "INNER JOIN saas_test.salesreport sr ON sr.combo_id = c.id " +
+            "FROM combo c " +
+            "INNER JOIN salesreport sr ON sr.combo_id = c.id " +
             "WHERE saledate BETWEEN MAKEDATE( YEAR ( now( ) ), 1 ) - INTERVAL 1 YEAR " +
             "AND STR_TO_DATE( CONCAT( 12, 31, YEAR ( CURDATE( ) ) - 1 ), '%m%d%Y' ) AND active = '1' " +
             "AND c.isavailable = 1 " +
@@ -287,7 +288,7 @@ exports.listLastYearSales = function (req, res) {
  */
 exports.listExpireSubcription = function (req, res) {
     const company_id = req.token.company_id ? req.token.company_id : 1;
-    dbRaporte.sequelize.query(" select MAX(DATE(end_date)) AS to_date," +
+    dbRaporte.sequelize.query(" select DATE(end_date) AS to_date," +
       " COUNT(end_date) AS total from subscription " +
       "where end_date BETWEEN CURDATE() AND  CURDATE() + INTERVAL 31 DAY AND company_id = " + company_id +
       " GROUP BY DAY(end_date) ORDER BY to_date",
@@ -334,12 +335,13 @@ exports.listExpireSubcription = function (req, res) {
  * @apiError (40x) {String} message Error message.
  */
 exports.listExpireSubcriptionByDay = function (req, res) {
-    let company_id = req.token.company_id ? req.token.company_id : 1;
-    dbRaporte.sequelize.query(" select MAX(DATE(end_date)) AS to_date," +
-      " COUNT(end_date) AS total from subscription " +
-      "where end_date >= CURDATE() AND company_id = " + company_id +
-      " GROUP BY DAY(end_date) ORDER BY to_date",
-      {type: dbRaporte.sequelize.QueryTypes.SELECT})
+    const company_id = req.token.company_id ? req.token.company_id : 1;
+    dbRaporte.sequelize.query(`select count(*) as total, DATE_FORMAT(end_date, '%Y-%m-15') as to_date
+        from subscription
+        where end_date >= NOW() and company_id = ?
+        group by MONTH(end_date), YEAR(end_date)
+        order by end_date;`,
+      {type: dbRaporte.sequelize.QueryTypes.SELECT, replacements: [company_id],})
       .then(function (results) {
           if (!results) {
               return res.status(404).send({
@@ -382,9 +384,9 @@ exports.activeDevices = function (req, res) {
 
 exports.listLastTwoYearsSales = function (req, res) {
     let company_id = req.token.company_id ? req.token.company_id : 1;
-    dbRaporte.sequelize.query(" select DATE(saledate) as date," +
+    dbRaporte.sequelize.query(" select DATE_FORMAT(saledate, '%Y-%m-15') as date," +
         " COUNT(saledate) AS total from salesreport" +
-        " where saledate >= DATE_FORMAT(CURDATE(), '%Y-%m-01') - INTERVAL 24 MONTH and company_id = " + company_id +
+        " where saledate >= NOW() - INTERVAL 24 MONTH and company_id = " + company_id +
         " group by month(saledate), year(saledate)" +
         " ORDER BY saledate ",
         {type: dbRaporte.sequelize.QueryTypes.SELECT})
@@ -433,7 +435,7 @@ exports.listEachDaySales = function (req, res) {
 
     if (parseInt(query._start)) final_where.offset = parseInt(query._start);
     if (parseInt(query._end)) final_where.limit = parseInt(query._end) - parseInt(query._start);
-    if (query._orderBy) final_where.order = query._orderBy + ' ' + query._orderDir;
+    if (query._orderBy) final_where.order = escape.col(query._orderBy) + ' ' + escape.orderDir(query._orderDir);
 
     final_where.attributes = ['id', 'combo_id', [sequelize.fn('max', sequelize.col('saledate')), 'saledate'], 'createdAt', [sequelize.fn('count', sequelize.col('combo_id')), 'count']];
     final_where.include = [{model: db.combo, required: true, attributes: ['name']}];

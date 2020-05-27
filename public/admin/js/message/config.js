@@ -48,6 +48,12 @@ export default function (nga, admin) {
 							]
 							return types;
 						})
+                    .validation({validator: function(value) {
+                            if(value === null || value === ''){
+                                throw new Error('Please Select User Type');
+                            }
+                        }
+                    })
 						.label('User Type'),
 				nga.field('username', 'reference')
 						.targetEntity(admin.getEntity('LoginData'))
@@ -71,7 +77,12 @@ export default function (nga, admin) {
 							{ value: 6, label: 'Apple TV' },
 							{value: 7, label: 'Web Smart TV'}
 						])
-						.validation({required: true})
+                    .validation({validator: function(value) {
+                            if(value === null || value === ''){
+                                throw new Error('Please Select Application Ids');
+                            }
+                        }
+                    })
 						.label('Applications IDs'),
 				nga.field('timetolive', 'number')
 						.attributes({ placeholder: 'ttl' })

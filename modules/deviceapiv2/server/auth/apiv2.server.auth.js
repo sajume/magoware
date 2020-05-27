@@ -20,7 +20,7 @@ const appIDs = ['1', '2', '3', '4', '5', '6', '7'];
  */
 function verifyToken(req, res, next) {
     let companyId = req.headers.company_id ? req.headers.company_id : 1;
-    
+
     if (!req.app.locals.backendsettings[companyId]) {
         response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
         return;
@@ -72,7 +72,7 @@ function verifyToken(req, res, next) {
                 response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_APPID', 'no-store');
                 return;
             }
-            
+
             set_screensize(authObj);
 
             authParams.auth = authObj;
@@ -88,7 +88,7 @@ function verifyToken(req, res, next) {
                     response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
                     return;
                 }
-                
+
                 if(req.body.hdmi === 'true' && mobileAppIDs.indexOf(authObj.appid) !== -1) {
                     response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
                     return;
@@ -265,6 +265,15 @@ exports.emptyCredentials = function(req, res, next) {
     req.empty_cred = true;
     next();
 }
+
+exports.acessOnlyFrom = function(req, res, next, urls) {
+    const currentUrl = req.get("host");
+    if(urls.indexOf(currentUrl) !== -1) {
+        next();
+    } else {
+        response.send_res(req, res, [], 888, -1, 'REQUEST_FAILED', 'FORBIDDEN_DATA', 'no-store');
+    }
+};
 
 exports.oneTimeAccessToken = function(req, res, next) {
     let authParams = decodeAuth(req);
@@ -461,7 +470,7 @@ function isAllowedAsync(req, res, next) {
 
     //Retrieve encoded auth from body, auth header or params
     let authParams = decodeAuth(req);
-    
+
     if (!authParams) {
         //Auth was not sent neither in plain text nor encrypted
         response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_TOKEN', 'no-store');
@@ -543,7 +552,6 @@ function isAllowedAsync(req, res, next) {
 
 //Verifies token and load parameters from auth
 function verifyAuth(req, res, next, auth, params) {
-    Object.assign(auth, params);
     if(req.body.hdmi === 'true' && mobileAppIDs.indexOf(auth.appid) !== -1) {
         response.send_res(req, res, [], 888, -1, 'BAD_TOKEN_DESCRIPTION', 'INVALID_INSTALLATION', 'no-store'); //hdmi cannot be active for mobile devices
     }
@@ -629,7 +637,7 @@ function decodeAuth(req) {
         if (req.headers.auth) {
             let authEncoded = decodeURIComponent(req.headers.auth);
             authEncoded = authEncoded.replace(/[{}]/g, '');
-    
+
             //Parse auth parameters to object
             authParams = querystring.parse(authEncoded,",","=");
             if (authParams[' auth']) {
@@ -654,15 +662,15 @@ function decodeAuth(req) {
         }
         else {
             return null;
-        }    
-    }  
+        }
+    }
     catch(e) {
         return null;
     }
 
     authParams.rawAuth = authParams.rawAuth.replace(/(,\+)/g, ',').replace(/\\r|\\n|\n|\r/g, ''); //remove all occurrences of '+' characters before each token component, remove newlines and carriage returns
     authParams.rawAuth = authParams.rawAuth.replace(/ /g, "+")
-    
+
     //Load required parameters to body
     if (!req.body.language) {
         if (authParams['language']) {
@@ -673,7 +681,7 @@ function decodeAuth(req) {
         }
     }
     req.authParams = authParams;
-    
+
     return req.authParams;
 }
 
@@ -692,7 +700,7 @@ function removeLeadingKeySpaces(obj) {
 function decryptAuth(auth, key) {
     return new Promise(function(resolve, reject) {
         let iv = new Buffer(key);
-        
+
         decryptAsync(key, iv, auth, function(err, plain) {
             if (err) {
                 reject(err);
