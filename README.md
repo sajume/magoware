@@ -6,7 +6,7 @@ MAGOWARE is an IPTV/OTT solution for Pay Tv Businesses. The administration porta
 
 ### Before you start, make sure you have these prerequisites installed:
 
- * PostgreSQL 9.4 or MySQL, MariaDB, SQLite and MSSQL
+ * PostgreSQL 9.4 or MySQL, MariaDB, SQLite and MSSQL (If using Mysql please use v-5.7.31)
  * Redis Server
  * Node.js 10.0.0 and up
 
